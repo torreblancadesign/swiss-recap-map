@@ -13,37 +13,96 @@ const AIRTABLE_TABLE_NAME = 'Locations';
 mapboxgl.accessToken = 'pk.eyJ1IjoiZW5yaXF1ZXRjaGF0IiwiYSI6ImNrczVvdnJ5eTFlNWEycHJ3ZXlqZjFhaXUifQ.71mYPeoLXSujYlj4X5bQnQ';
 const mapboxClient = mapboxSdk({ accessToken: mapboxgl.accessToken });
 
+const radiusOptions = [
+  { value: 10, label: '10 miles' },
+  { value: 25, label: '25 miles' },
+  { value: 50, label: '50 miles' },
+  { value: 100, label: '100 miles' },
+  { value: 'any', label: 'Any distance' },
+];
+
+const premiumOptions = [
+  { value: 'all', label: 'All locations' },
+  { value: 'premium', label: 'Premium only' },
+];
+
 // Custom Modal styles
 const customModalStyles = {
-  overlay: { backgroundColor: 'rgba(0, 0, 0, 0.75)', zIndex: 1000 },
+  overlay: {
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    zIndex: 1000,
+  },
   content: {
-    margin: 'auto', width: '70%', maxWidth: '90%', borderRadius: '12px',
-    padding: '30px', backgroundColor: '#fff', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
+    position: 'relative',
+    margin: 'auto',
+    width: '70%',
+    maxWidth: '90%',
+    borderRadius: '12px',
+    padding: '30px',
+    backgroundColor: '#fff',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)',
   },
 };
+
+// Haversine formula for distance calculation
+function haversineDistance(coords1, coords2) {
+  const [lon1, lat1] = coords1;
+  const [lon2, lat2] = coords2;
+  const R = 6371e3; // Earth radius in meters
+  const 1 = lat1 * Math.PI / 180;
+  const 2 = lat2 * Math.PI / 180;
+  const  = (lat2 - lat1) * Math.PI / 180;
+  const  = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin( / 2) * Math.sin( / 2) +
+            Math.cos(1) * Math.cos(2) *
+            Math.sin( / 2) * Math.sin( / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  const distanceInMeters = R * c;
+  return distanceInMeters / 1609.34; // Convert to miles
+}
 
 const Component = () => {
   const mapContainer = React.useRef(null);
   const [map, setMap] = useState(null);
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [modalData, setModalData] = useState(null);
+  const [searchAddress, setSearchAddress] = useState('');
+  const [searchRadius, setSearchRadius] = useState(50);
+  const [premiumFilter, setPremiumFilter] = useState('all');
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const toggleCollapse = () => {
+    setIsCollapsed(prevState => !prevState);
+  };
 
   // Fetch locations from Airtable
   const fetchLocations = async () => {
+    let allRecords = [];
+    let offset = null;
+
     try {
-      const response = await fetch(
-        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}`,
-        { headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` } }
-      );
-      const data = await response.json();
-      return data.records;
+      do {
+        const response = await fetch(
+          `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}${offset ? `?offset=${offset}` : ''}`, {
+          headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` }
+        });
+
+        const data = await response.json();
+        allRecords = [...allRecords, ...data.records];
+        offset = data.offset;
+      } while (offset);
+
+      console.log('Fetched locations from Airtable:', allRecords);
+      return allRecords;
     } catch (error) {
       console.error("Error fetching data from Airtable:", error);
       return [];
     }
   };
 
-  // Open modal with location details
   const openModal = (data) => {
     setModalData(data);
     setModalIsOpen(true);
@@ -51,52 +110,156 @@ const Component = () => {
 
   const closeModal = () => setModalIsOpen(false);
 
-  // Initialize the map
-  const initializeMap = (locations) => {
+  const reverseGeocode = async (coords) => {
+    try {
+      const response = await mapboxClient.reverseGeocode({ query: coords, limit: 1 }).send();
+      if (response.body.features.length) {
+        return response.body.features[0].place_name;
+      }
+      return `${coords[1]}, ${coords[0]}`; // Fallback to coordinates
+    } catch (error) {
+      console.error("Error reverse geocoding:", error);
+      return `${coords[1]}, ${coords[0]}`;
+    }
+  };
+
+  const getUserLocationAndSearch = async () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const { latitude, longitude } = position.coords;
+        const userCoords = [longitude, latitude];
+        const address = await reverseGeocode(userCoords);
+        setSearchAddress(address);
+        initializeMap(userCoords);
+      });
+    } else {
+      console.error("Geolocation is not supported by this browser.");
+    }
+  };
+
+  const initializeMap = (coords) => {
     const newMap = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v12',
-      center: [-98.5795, 39.8283], // Default center (USA)
-      zoom: 4,
+      center: coords,
+      zoom: 10,
     });
-
-    locations.forEach((location) => {
-      const { Location: address, Name: name, Details: details } = location.fields;
-
-      // Geocode the address and add pins to the map
-      mapboxClient.forwardGeocode({ query: address, limit: 1 }).send().then((response) => {
-        if (response.body.features.length) {
-          const coords = response.body.features[0].center;
-          const marker = new mapboxgl.Marker()
-            .setLngLat(coords)
-            .setPopup(new mapboxgl.Popup().setText(name))
-            .addTo(newMap);
-
-          marker.getElement().addEventListener('click', () => {
-            openModal({ name, address, details });
-          });
-        }
-      });
-    });
-
     setMap(newMap);
   };
 
+  const runSearch = async (addressOrCoords, radius, premiumFilter) => {
+    if (!map) return;
+
+    setLoading(true);
+    const allLocations = await fetchLocations();
+    const bounds = new mapboxgl.LngLatBounds();
+    let hasValidCoords = false;
+
+    let searchCoords;
+    if (typeof addressOrCoords === 'string') {
+      const searchResponse = await mapboxClient.forwardGeocode({ query: addressOrCoords, limit: 1 }).send();
+      if (!searchResponse.body.features.length) return;
+      searchCoords = searchResponse.body.features[0].center;
+    } else {
+      searchCoords = addressOrCoords;
+    }
+
+    for (const location of allLocations) {
+      const locAddress = location.fields['Location'];
+      const name = location.fields['Name'];
+      const details = location.fields['Details'];
+
+      try {
+        const locResponse = await mapboxClient.forwardGeocode({ query: locAddress, limit: 1 }).send();
+        if (!locResponse.body.features.length) continue;
+
+        const locCoords = locResponse.body.features[0].center;
+        const distanceInMiles = haversineDistance(searchCoords, locCoords);
+
+        if (radius === 'any' || distanceInMiles <= radius) {
+          const marker = new mapboxgl.Marker()
+            .setLngLat(locCoords)
+            .setPopup(new mapboxgl.Popup().setText(name))
+            .addTo(map);
+
+          marker.getElement().addEventListener('click', () => {
+            openModal({ name, locAddress, details });
+          });
+
+          bounds.extend(locCoords);
+          hasValidCoords = true;
+        }
+      } catch (error) {
+        console.error(`Error geocoding address: ${locAddress}`, error);
+      }
+    }
+
+    if (hasValidCoords) {
+      map.fitBounds(bounds, { padding: 50 });
+    }
+
+    setLoading(false);
+  };
+
   useEffect(() => {
-    fetchLocations().then((locations) => {
-      initializeMap(locations);
-    });
+    if (map) {
+      runSearch(searchAddress, searchRadius, premiumFilter);
+    }
+  }, [map, premiumFilter]);
+
+  useEffect(() => {
+    getUserLocationAndSearch();
   }, []);
 
   return (
-    <div>
-      <div ref={mapContainer} style={{ height: '500px', width: '100%' }} />
+    <div className={styles.container}>
+      <button onClick={toggleCollapse} className={styles.toggleButton}>
+        {isCollapsed ? 'Expand Search' : 'Collapse Search'}
+      </button>
+
+      {!isCollapsed && (
+        <div className={styles.searchContainer}>
+          <div className={styles.searchControls}>
+            <input
+              type="text"
+              value={searchAddress}
+              onChange={(e) => setSearchAddress(e.target.value)}
+              placeholder="Enter address"
+              className={styles.searchInput}
+            />
+            <select
+              value={searchRadius}
+              onChange={(e) => setSearchRadius(e.target.value)}
+              className={styles.searchSelect}
+            >
+              {radiusOptions.map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <select
+              value={premiumFilter}
+              onChange={(e) => setPremiumFilter(e.target.value)}
+              className={styles.searchSelect}
+            >
+              {premiumOptions.map(option => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <button onClick={() => runSearch(searchAddress, searchRadius, premiumFilter)} className={styles.searchButton}>
+              Search
+            </button>
+            {loading && <img src="/loading.gif" alt="Loading..." className={styles.loadingGif} />}
+          </div>
+        </div>
+      )}
+
+      <div ref={mapContainer} className={styles.mapContainer} />
 
       <Modal isOpen={modalIsOpen} onRequestClose={closeModal} contentLabel="Location Details" style={customModalStyles}>
         {modalData && (
-          <div>
+          <div className={styles.modalContent}>
             <h2>{modalData.name}</h2>
-            <p><strong>Address:</strong> {modalData.address}</p>
+            <p><strong>Address:</strong> {modalData.locAddress}</p>
             <p><strong>Details:</strong> {modalData.details}</p>
             <button onClick={closeModal}>Close</button>
           </div>
