@@ -167,7 +167,7 @@ const Component = () => {
     }
 
     for (const location of allLocations) {
-      const locAddress = location.fields['Location'];
+      const locAddress = location.fields['Address'];
       const name = location.fields['Name'];
       const details = location.fields['Details'];
 
