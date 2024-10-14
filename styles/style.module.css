@@ -1,7 +1,183 @@
-/* style.module.css */
-.mapContainer {
-  width: 100%;
-  height: 500px;
-  position: relative;
-  border: 1px solid #ccc;
+/* Container for the entire component */
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+    font-family: 'Helvetica Neue', Arial, sans-serif; /* Modern font */
 }
+
+/* Loading GIF styling */
+.loadingGif {
+    width: 30px;
+    height: 30px;
+    margin-left: 10px; /* Space between search button and loading gif */
+}
+
+/* Search section */
+.searchContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 15px;
+    background-color: #ffffff;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.05); /* Subtle shadow for modern effect */
+    z-index: 1;
+    transition: height 0.3s ease-out, padding 0.3s ease-out; /* Smooth transition */
+    border-radius: 8px;
+}
+
+/* Search controls container */
+.searchControls {
+    display: flex;
+    flex-wrap: nowrap; /* Prevent elements from wrapping into multiple lines on desktop */
+    width: 100%;
+    max-width: 1200px;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px; /* Gap between elements */
+}
+
+/* Toggle button for expanding/collapsing search */
+.toggleButton {
+    display: none;
+    background-color: grey;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.toggleButton:hover {
+    background-color: #0056b3;
+}
+
+/* Search input, select boxes, and button */
+.searchInput,
+.searchSelect,
+.searchButton {
+    padding: 12px 15px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+    transition: all 0.3s ease;
+    flex-grow: 1; /* Allow fields to grow/shrink based on available space */
+    min-width: 120px; /* Prevent them from becoming too small */
+    box-sizing: border-box; /* Ensure padding doesn't break layout */
+}
+
+/* Search input and select specific styling */
+.searchInput:focus,
+.searchSelect:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);
+    outline: none;
+}
+
+/* Button specific styling */
+.searchButton {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    flex-grow: 0; /* Prevent the button from growing too large */
+    min-width: 100px;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.searchButton:hover {
+    background-color: #0056b3;
+    transform: scale(1.05); /* Slight zoom on hover for modern feel */
+}
+
+/* Mobile-friendly styles */
+@media (max-width: 768px) {
+    .searchControls {
+        flex-direction: column; /* Stack elements vertically on smaller screens */
+        flex-wrap: wrap; /* Allow wrapping on mobile */
+    }
+
+    .toggleButton {
+        display: block; /* Show the toggle button on mobile */
+    }
+
+    .searchInput,
+    .searchSelect,
+    .searchButton {
+        width: 100%; /* Full width on smaller screens */
+        margin-bottom: 10px; /* Space between inputs */
+    }
+}
+
+/* Map container takes the remaining space */
+.mapContainer {
+    flex: 1;
+    width: 100%;
+}
+
+/* Mapbox canvas adjustments */
+.mapboxgl-canvas {
+    height: 100%;
+    width: 100%;
+}
+
+/* Custom marker icon styling */
+.mapboxgl-marker {
+    background-image: url('/marker-icon.png');
+    background-size: cover;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+}
+
+/* Modern modal styling 
+.modalContent {
+    position: relative;
+    background-color: #ffffff;
+    padding: 30px;
+    width: 400px;
+    max-width: 90%;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); /* Deeper shadow for a sleek effect 
+    text-align: left;
+    font-size: 16px;
+    color: #333;
+    animation: fadeIn 0.3s ease-out; /* Fade-in animation 
+} */
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.75);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Modal close button styling */
+.modalContent button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.modalContent button:hover {
+    background-color: #0056b3;
+    transform: scale(1.05);
+}
+ 
