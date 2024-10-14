@@ -3,6 +3,7 @@ import mapboxgl from 'mapbox-gl';
 import mapboxSdk from '@mapbox/mapbox-sdk/services/geocoding';
 import Modal from 'react-modal';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import styles from "../styles/style.module.css";
 
 // Airtable setup
 const AIRTABLE_BASE_ID = 'appTxnvKxOeLPaZau';
