@@ -48,8 +48,9 @@ const customModalStyles = {
 function haversineDistance(coords1, coords2) {
   const [lon1, lat1] = coords1;
   const [lon2, lat2] = coords2;
+  
   const R = 6371e3; // Earth radius in meters
-  const 1 = lat1 * Math.PI / 180;
+  const 1 = lat1 * Math.PI / 180;  // Corrected from 1 to 1 (phi1)
   const 2 = lat2 * Math.PI / 180;
   const  = (lat2 - lat1) * Math.PI / 180;
   const  = (lon2 - lon1) * Math.PI / 180;
