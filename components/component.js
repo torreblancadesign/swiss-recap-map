@@ -75,6 +75,7 @@ const Component = () => {
   const [premiumFilter, setPremiumFilter] = useState('all');
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [mapStyle, setMapStyle] = useState('mapbox://styles/mapbox/streets-v12'); // Default style
 
   const toggleCollapse = () => {
     setIsCollapsed(prevState => !prevState);
@@ -142,11 +143,28 @@ const Component = () => {
   const initializeMap = (coords) => {
     const newMap = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: mapStyle, // Use the map style state
       center: coords,
       zoom: 10,
     });
     setMap(newMap);
+  };
+
+  const toggleMapStyle = () => {
+    if (!map) return;
+    
+    const currentCenter = map.getCenter(); // Get the current map center
+    const newStyle = mapStyle === 'mapbox://styles/mapbox/streets-v12' 
+                      ? 'mapbox://styles/mapbox/satellite-streets-v12' 
+                      : 'mapbox://styles/mapbox/streets-v12';
+
+    setMapStyle(newStyle);
+
+    // Apply the new style to the map while keeping the center
+    map.setStyle(newStyle);
+    map.on('style.load', () => {
+      map.setCenter(currentCenter);
+    });
   };
 
   const runSearch = async (addressOrCoords, radius, premiumFilter) => {
@@ -215,20 +233,22 @@ const Component = () => {
 
   return (
     <div className={styles.container}>
-      <button onClick={toggleCollapse} className={styles.toggleButton}>
-        {isCollapsed ? 'Expand Search' : 'Collapse Search'}
-      </button>
+      <div className={styles.utilityBar}>
+        <button onClick={toggleMapStyle} className={styles.toggleButton}>
+          Toggle Map View
+        </button>
+        <input
+          type="text"
+          value={searchAddress}
+          onChange={(e) => setSearchAddress(e.target.value)}
+          placeholder="Enter address"
+          className={styles.searchInput}
+        />
+      </div>
 
       {!isCollapsed && (
         <div className={styles.searchContainer}>
           <div className={styles.searchControls}>
-            <input
-              type="text"
-              value={searchAddress}
-              onChange={(e) => setSearchAddress(e.target.value)}
-              placeholder="Enter address"
-              className={styles.searchInput}
-            />
             <select
               value={searchRadius}
               onChange={(e) => setSearchRadius(e.target.value)}
@@ -272,5 +292,3 @@ const Component = () => {
 };
 
 export default Component;
-
- 
