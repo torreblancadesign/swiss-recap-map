@@ -146,7 +146,7 @@ const Component = () => {
     });
   };
 
-  // Add business markers with hover popups
+  // Add business markers with click popups
   const addBusinessMarkers = (businesses, map) => {
     const newMarkers = businesses.map(business => {
       const { center: [longitude, latitude], place_name: address } = business;
@@ -162,7 +162,7 @@ const Component = () => {
         .setLngLat([longitude, latitude])
         .addTo(map);
 
-      marker.getElement().addEventListener('mouseenter', () => {
+      marker.getElement().addEventListener('click', () => {
         const popupContent = `
           <h4>${name}</h4>
           <p><strong>Address:</strong> ${address}</p>
@@ -175,26 +175,12 @@ const Component = () => {
           popup.remove();
         }
 
-        const newPopup = new mapboxgl.Popup({ offset: 25, closeOnMove: false })
+        const newPopup = new mapboxgl.Popup({ offset: 25 })
           .setLngLat([longitude, latitude])
           .setHTML(popupContent)
           .addTo(map);
 
-        newPopup.getElement().addEventListener('mouseleave', () => {
-          if (popup) {
-            popup.remove();
-            setPopup(null);
-          }
-        });
-
         setPopup(newPopup);
-      });
-
-      marker.getElement().addEventListener('mouseleave', () => {
-        if (popup) {
-          popup.remove();
-          setPopup(null);
-        }
       });
 
       return marker;
