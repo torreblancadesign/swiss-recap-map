@@ -234,17 +234,19 @@ const Component = () => {
         zoom: 9,
       });
 
-      const drawControl = new MapboxDraw({
-        displayControlsDefault: false,
-        controls: {
-          polygon: true,
-          trash: true,
-        },
-      });
+      newMap.on('load', () => {
+        const drawControl = new MapboxDraw({
+          displayControlsDefault: false,
+          controls: {
+            polygon: true,
+            trash: true,
+          },
+        });
 
-      newMap.addControl(drawControl, 'top-left');
-      setDraw(drawControl);
-      setMap(newMap);
+        newMap.addControl(drawControl, 'top-left');
+        setDraw(drawControl);
+        setMap(newMap);
+      });
     };
 
     initializeMap();
