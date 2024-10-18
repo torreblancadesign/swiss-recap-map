@@ -1,183 +1,203 @@
 /* Container for the entire component */
 .container {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    width: 100%;
-    font-family: 'Helvetica Neue', Arial, sans-serif; /* Modern font */
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  font-family: 'Helvetica Neue', Arial, sans-serif; /* Modern font */
 }
 
 /* Loading GIF styling */
 .loadingGif {
-    width: 30px;
-    height: 30px;
-    margin-left: 10px; /* Space between search button and loading gif */
+  width: 30px;
+  height: 30px;
+  margin-left: 10px; /* Space between search button and loading gif */
 }
 
 /* Search section */
-.searchContainer {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 15px;
-    background-color: #ffffff;
-    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.05); /* Subtle shadow for modern effect */
-    z-index: 1;
-    transition: height 0.3s ease-out, padding 0.3s ease-out; /* Smooth transition */
-    border-radius: 8px;
+.utilityBar {
+  display: flex;
+  justify-content: space-between; /* Spread elements out */
+  align-items: center;
+  padding: 15px;
+  background-color: #ffffff;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.05); /* Subtle shadow for modern effect */
+  z-index: 1;
+  border-radius: 8px;
 }
 
 /* Search controls container */
 .searchControls {
-    display: flex;
-    flex-wrap: nowrap; /* Prevent elements from wrapping into multiple lines on desktop */
-    width: 100%;
-    max-width: 1200px;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px; /* Gap between elements */
+  display: flex;
+  justify-content: space-between; /* Spread elements out */
+  align-items: center;
+  gap: 10px; /* Gap between elements */
 }
 
 /* Toggle button for expanding/collapsing search */
 .toggleButton {
-    display: none;
-    background-color: grey;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    cursor: pointer;
-    z-index: 10;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.3s ease;
 }
 
 .toggleButton:hover {
-    background-color: #0056b3;
+  background-color: #0056b3;
+  transform: scale(1.05); /* Slight zoom on hover for modern feel */
+}
+
+/* Draw button styling */
+.drawButton {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.drawButton:hover {
+  background-color: #218838;
+  transform: scale(1.05); /* Slight zoom on hover for modern feel */
 }
 
 /* Search input, select boxes, and button */
 .searchInput,
 .searchSelect,
 .searchButton {
-    padding: 12px 15px;
-    font-size: 16px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background-color: #f9f9f9;
-    transition: all 0.3s ease;
-    flex-grow: 1; /* Allow fields to grow/shrink based on available space */
-    min-width: 120px; /* Prevent them from becoming too small */
-    box-sizing: border-box; /* Ensure padding doesn't break layout */
+  padding: 12px 15px;
+  font-size: 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+  transition: all 0.3s ease;
+  flex-grow: 1; /* Allow fields to grow/shrink based on available space */
+  min-width: 120px; /* Prevent them from becoming too small */
+  box-sizing: border-box; /* Ensure padding doesn't break layout */
 }
 
 /* Search input and select specific styling */
 .searchInput:focus,
 .searchSelect:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);
-    outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 8px rgba(0, 123, 255, 0.2);
+  outline: none;
 }
 
 /* Button specific styling */
 .searchButton {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    cursor: pointer;
-    flex-grow: 0; /* Prevent the button from growing too large */
-    min-width: 100px;
-    transition: background-color 0.3s ease, transform 0.3s ease;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+  flex-grow: 0; /* Prevent the button from growing too large */
+  min-width: 100px;
+  transition: background-color 0.3s ease, transform 0.3s ease;
 }
 
 .searchButton:hover {
-    background-color: #0056b3;
-    transform: scale(1.05); /* Slight zoom on hover for modern feel */
-}
-
-/* Mobile-friendly styles */
-@media (max-width: 768px) {
-    .searchControls {
-        flex-direction: column; /* Stack elements vertically on smaller screens */
-        flex-wrap: wrap; /* Allow wrapping on mobile */
-    }
-
-    .toggleButton {
-        display: block; /* Show the toggle button on mobile */
-    }
-
-    .searchInput,
-    .searchSelect,
-    .searchButton {
-        width: 100%; /* Full width on smaller screens */
-        margin-bottom: 10px; /* Space between inputs */
-    }
+  background-color: #0056b3;
+  transform: scale(1.05); /* Slight zoom on hover for modern feel */
 }
 
 /* Map container takes the remaining space */
 .mapContainer {
-    flex: 1;
-    width: 100%;
+  flex: 1;
+  width: 100%;
+  height: calc(100vh - 100px); /* Set height for map container */
 }
 
-/* Mapbox canvas adjustments */
-.mapboxgl-canvas {
-    height: 100%;
-    width: 100%;
+/* Popup content for business details */
+.mapboxgl-popup-content {
+  background-color: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15); /* Soft shadow for depth */
+  font-family: 'Arial', sans-serif;
+  color: #333;
 }
 
-/* Custom marker icon styling */
-.mapboxgl-marker {
-    background-image: url('/marker-icon.png');
-    background-size: cover;
-    width: 30px;
-    height: 30px;
-    cursor: pointer;
+.mapboxgl-popup-content h4 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 18px;
+  color: #007bff;
 }
 
-/* Modern modal styling 
+.mapboxgl-popup-content p {
+  margin: 0;
+  line-height: 1.5;
+  font-size: 14px;
+  color: #333;
+}
+
+.mapboxgl-popup-content p strong {
+  font-weight: 600;
+}
+
+/* Modal content styling */
 .modalContent {
-    position: relative;
-    background-color: #ffffff;
-    padding: 30px;
-    width: 400px;
-    max-width: 90%;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); /* Deeper shadow for a sleek effect 
-    text-align: left;
-    font-size: 16px;
-    color: #333;
-    animation: fadeIn 0.3s ease-out; /* Fade-in animation 
-} */
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-20px); }
-    to { opacity: 1; transform: translateY(0); }
+  position: relative;
+  background-color: #ffffff;
+  padding: 30px;
+  width: 400px;
+  max-width: 90%;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); /* Deep shadow for sleek effect */
+  text-align: left;
+  font-size: 16px;
+  color: #333;
 }
 
-.modalOverlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.75);
-    display: flex;
-    justify-content: center;
-    align-items: center;
+.modalContent h2 {
+  margin: 0;
+  font-size: 24px;
+  color: #007bff;
 }
 
-/* Modal close button styling */
+.modalContent p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+
+/* Modal close button */
 .modalContent button {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 8px;
-    cursor: pointer;
-    margin-top: 20px;
-    transition: background-color 0.3s ease, transform 0.3s ease;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: background-color 0.3s ease, transform 0.3s ease;
 }
 
 .modalContent button:hover {
-    background-color: #0056b3;
-    transform: scale(1.05);
+  background-color: #0056b3;
+  transform: scale(1.05);
 }
- 
+
+/* Mobile-friendly styles */
+@media (max-width: 768px) {
+  .utilityBar {
+    flex-direction: column;
+  }
+
+  .toggleButton, 
+  .drawButton, 
+  .searchInput, 
+  .searchSelect, 
+  .searchButton {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  .mapContainer {
+    height: calc(100vh - 300px); /* Reduce map size on smaller screens */
+  }
+}
