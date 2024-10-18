@@ -175,7 +175,7 @@ const Component = () => {
           popup.remove();
         }
 
-        const newPopup = new mapboxgl.Popup({ offset: 25 })
+        const newPopup = new mapboxgl.Popup({ offset: 25, closeOnMove: false })
           .setLngLat([longitude, latitude])
           .setHTML(popupContent)
           .addTo(map);
