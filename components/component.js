@@ -102,7 +102,7 @@ const Component = () => {
 
     // Query Mapbox API within the bounding box
     geocodingClient.forwardGeocode({
-      query: 'commercial',
+      query: 'restaurant, grocery, gas station',
       bbox: [minLng, minLat, maxLng, maxLat], // The bounding box calculated from the polygon
       limit: 50, // You can adjust the limit as needed
     })
