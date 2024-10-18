@@ -1,33 +1,25 @@
 import React, { useEffect, useState } from "react";
 import mapboxgl from 'mapbox-gl';
-import mapboxSdk from '@mapbox/mapbox-sdk/services/geocoding';
+import MapboxDraw from '@mapbox/mapbox-gl-draw'; // Import Mapbox GL Draw
+import GeocodingService from '@mapbox/mapbox-sdk/services/geocoding'; // Correct import for geocoding service
 import Modal from 'react-modal';
+import * as turf from '@turf/turf';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'; // Import draw plugin CSS
 import styles from "../styles/style.module.css";
 
 // Airtable setup
 const AIRTABLE_BASE_ID = 'appTxnvKxOeLPaZau';
-const AIRTABLE_API_KEY = 'patRH8HKZBvltgwAe.5d9119f89fe8ab95f51dc75fdbea0cb39ae2b885238cb87316712f46b8811025';
+const AIRTABLE_API_KEY = 'patRH8HKZBvltgwAe.5d911f89fe8ab95f51dc75fdbea0cb39ae2b885238cb87316712f46b8811025';
 const AIRTABLE_TABLE_NAME = 'Locations';
 
 // Mapbox access token
 mapboxgl.accessToken = 'pk.eyJ1IjoiZW5yaXF1ZXRjaGF0IiwiYSI6ImNrczVvdnJ5eTFlNWEycHJ3ZXlqZjFhaXUifQ.71mYPeoLXSujYlj4X5bQnQ';
-const mapboxClient = mapboxSdk({ accessToken: mapboxgl.accessToken });
 
-const radiusOptions = [
-  { value: 10, label: '10 miles' },
-  { value: 25, label: '25 miles' },
-  { value: 50, label: '50 miles' },
-  { value: 100, label: '100 miles' },
-  { value: 'any', label: 'Any distance' },
-];
+// Initialize the Mapbox Geocoding Service
+const geocodingClient = GeocodingService({ accessToken: mapboxgl.accessToken });
 
-const premiumOptions = [
-  { value: 'all', label: 'All locations' },
-  { value: 'premium', label: 'Premium only' },
-];
-
-// Custom Modal styles
+// Define custom modal styles
 const customModalStyles = {
   overlay: {
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
@@ -45,64 +37,36 @@ const customModalStyles = {
   },
 };
 
-// Haversine formula for distance calculation
-function haversineDistance(coords1, coords2) {
-  const [lon1, lat1] = coords1;
-  const [lon2, lat2] = coords2;
+const radiusOptions = [
+  { value: 10, label: '10 miles' },
+  { value: 25, label: '25 miles' },
+  { value: 50, label: '50 miles' },
+  { value: 100, label: '100 miles' },
+  { value: 'any', label: 'Any distance' },
+];
 
-  const R = 6371e3; // Earth radius in meters
-  const φ1 = lat1 * Math.PI / 180;
-  const φ2 = lat2 * Math.PI / 180;
-  const Δφ = (lat2 - lat1) * Math.PI / 180;
-  const Δλ = (lon2 - lon1) * Math.PI / 180;
-
-  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-            Math.cos(φ1) * Math.cos(φ2) *
-            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  const distanceInMeters = R * c; // in meters
-  return distanceInMeters / 1609.34; // Convert meters to miles
-}
+const premiumOptions = [
+  { value: 'all', label: 'All locations' },
+  { value: 'premium', label: 'Premium only' },
+];
 
 const Component = () => {
   const mapContainer = React.useRef(null);
   const [map, setMap] = useState(null);
+  const [draw, setDraw] = useState(null); // State to manage draw control
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [modalData, setModalData] = useState(null);
+  const [popup, setPopup] = useState(null); // Popup state
+  const [markers, setMarkers] = useState([]); // Store markers for cleanup
   const [searchAddress, setSearchAddress] = useState('');
   const [searchRadius, setSearchRadius] = useState(50);
   const [premiumFilter, setPremiumFilter] = useState('all');
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const toggleCollapse = () => {
-    setIsCollapsed(prevState => !prevState);
-  };
-
-  // Fetch locations from Airtable
-  const fetchLocations = async () => {
-    let allRecords = [];
-    let offset = null;
-
-    try {
-      do {
-        const response = await fetch(
-          `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${AIRTABLE_TABLE_NAME}${offset ? `?offset=${offset}` : ''}`, {
-          headers: { Authorization: `Bearer ${AIRTABLE_API_KEY}` }
-        });
-
-        const data = await response.json();
-        allRecords = [...allRecords, ...data.records];
-        offset = data.offset;
-      } while (offset);
-
-      console.log('Fetched locations from Airtable:', allRecords);
-      return allRecords;
-    } catch (error) {
-      console.error("Error fetching data from Airtable:", error);
-      return [];
-    }
+  // Function to clear all markers
+  const clearMarkers = () => {
+    markers.forEach(marker => marker.remove());
+    setMarkers([]); // Reset the marker array
   };
 
   const openModal = (data) => {
@@ -112,151 +76,237 @@ const Component = () => {
 
   const closeModal = () => setModalIsOpen(false);
 
-  const reverseGeocode = async (coords) => {
-    try {
-      const response = await mapboxClient.reverseGeocode({ query: coords, limit: 1 }).send();
-      if (response.body.features.length) {
-        return response.body.features[0].place_name;
-      }
-      return `${coords[1]}, ${coords[0]}`; // Fallback to coordinates
-    } catch (error) {
-      console.error("Error reverse geocoding:", error);
-      return `${coords[1]}, ${coords[0]}`;
+  // Event listener to detect when a polygon is created or updated
+  const handleDrawChange = (e) => {
+    if (e.features.length === 0) {
+      return;
     }
+
+    const polygon = e.features[0];
+    const bbox = turf.bbox(polygon); // Bounding box around the polygon
+
+    console.log("Polygon bounding box:", bbox);
+
+    // Clear any existing markers
+    clearMarkers();
+
+    // Fetch businesses within the polygon
+    searchForBusinessesWithinPolygon(bbox);
   };
 
-  const getUserLocationAndSearch = async () => {
+  // Fetch businesses within the bounding box of the drawn polygon
+  const searchForBusinessesWithinPolygon = (bbox) => {
+    const [minLng, minLat, maxLng, maxLat] = bbox;
+
+    console.log('Bounding box:', { minLng, minLat, maxLng, maxLat });
+
+    // Query Mapbox API within the bounding box
+    geocodingClient.forwardGeocode({
+      query: 'restaurant',
+      bbox: [minLng, minLat, maxLng, maxLat], // The bounding box calculated from the polygon
+      limit: 50, // You can adjust the limit as needed
+    })
+    .send()
+    .then((response) => {
+      const businesses = response.body.features;
+
+      if (businesses.length === 0) {
+        console.log("No businesses found within this polygon.");
+      } else {
+        console.log("Businesses found within polygon:", businesses);
+        addBusinessMarkers(businesses, map); // Add markers to the map
+      }
+    })
+    .catch((err) => {
+      console.error("Error fetching businesses within polygon:", err);
+    });
+  };
+
+  // Fetch businesses by manual search (address and radius)
+  const runManualSearch = async () => {
+    if (!map) return;
+
+    setLoading(true);
+    geocodingClient.forwardGeocode({
+      query: searchAddress,
+      proximity: map.getCenter(),
+      limit: 10,
+    })
+    .send()
+    .then((response) => {
+      const businesses = response.body.features;
+      console.log("Businesses found manually:", businesses);
+      addBusinessMarkers(businesses, map);
+    })
+    .catch((err) => {
+      console.error("Error fetching businesses:", err);
+    })
+    .finally(() => {
+      setLoading(false);
+    });
+  };
+
+  // Add business markers with hover popups
+  const addBusinessMarkers = (businesses, map) => {
+    const newMarkers = businesses.map(business => {
+      const { center: [longitude, latitude], place_name: address } = business;
+      const name = business.text;
+      const properties = business.properties || {};
+      const phone = properties.tel || 'N/A'; 
+      const email = properties.email || 'N/A'; 
+      const businessType = properties.category || 'N/A';
+
+      console.log("Adding marker for business:", name);
+
+      const marker = new mapboxgl.Marker()
+        .setLngLat([longitude, latitude])
+        .addTo(map);
+
+      marker.getElement().addEventListener('mouseenter', () => {
+        const popupContent = `
+          <h4>${name}</h4>
+          <p><strong>Address:</strong> ${address}</p>
+          <p><strong>Phone:</strong> ${phone}</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Type:</strong> ${businessType}</p>
+        `;
+
+        if (popup) {
+          popup.remove();
+        }
+
+        const newPopup = new mapboxgl.Popup({ offset: 25 })
+          .setLngLat([longitude, latitude])
+          .setHTML(popupContent)
+          .addTo(map);
+
+        newPopup.getElement().addEventListener('mouseleave', () => {
+          if (popup) {
+            popup.remove();
+            setPopup(null);
+          }
+        });
+
+        setPopup(newPopup);
+      });
+
+      marker.getElement().addEventListener('mouseleave', () => {
+        if (popup) {
+          popup.remove();
+          setPopup(null);
+        }
+      });
+
+      return marker;
+    });
+
+    setMarkers(newMarkers);
+  };
+
+  // Function to get user location and center the map
+  const getUserLocationAndCenterMap = () => {
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(async (position) => {
+      navigator.geolocation.getCurrentPosition((position) => {
         const { latitude, longitude } = position.coords;
-        const userCoords = [longitude, latitude];
-        const address = await reverseGeocode(userCoords);
-        setSearchAddress(address);
-        initializeMap(userCoords);
+        map.setCenter([longitude, latitude]);
+        map.setZoom(14);
+      }, (error) => {
+        console.error("Error getting user location:", error);
       });
     } else {
       console.error("Geolocation is not supported by this browser.");
     }
   };
 
-  const initializeMap = (coords) => {
-    const newMap = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
-      center: coords,
-      zoom: 10,
-    });
-    setMap(newMap);
-  };
-
-  const runSearch = async (addressOrCoords, radius, premiumFilter) => {
+  useEffect(() => {
     if (!map) return;
 
-    setLoading(true);
-    const allLocations = await fetchLocations();
-    const bounds = new mapboxgl.LngLatBounds();
-    let hasValidCoords = false;
+    // Add event listeners for drawing
+    map.on('draw.create', handleDrawChange);
+    map.on('draw.update', handleDrawChange);
+    map.on('draw.delete', clearMarkers);
 
-    let searchCoords;
-    if (typeof addressOrCoords === 'string') {
-      const searchResponse = await mapboxClient.forwardGeocode({ query: addressOrCoords, limit: 1 }).send();
-      if (!searchResponse.body.features.length) return;
-      searchCoords = searchResponse.body.features[0].center;
-    } else {
-      searchCoords = addressOrCoords;
-    }
-
-    for (const location of allLocations) {
-      const locAddress = location.fields['Address'];
-      const name = location.fields['Name'];
-      const details = location.fields['Details'];
-
-      try {
-        const locResponse = await mapboxClient.forwardGeocode({ query: locAddress, limit: 1 }).send();
-        if (!locResponse.body.features.length) continue;
-
-        const locCoords = locResponse.body.features[0].center;
-        const distanceInMiles = haversineDistance(searchCoords, locCoords);
-
-        if (radius === 'any' || distanceInMiles <= radius) {
-          const marker = new mapboxgl.Marker()
-            .setLngLat(locCoords)
-            .setPopup(new mapboxgl.Popup().setText(name))
-            .addTo(map);
-
-          marker.getElement().addEventListener('click', () => {
-            openModal({ name, locAddress, details });
-          });
-
-          bounds.extend(locCoords);
-          hasValidCoords = true;
-        }
-      } catch (error) {
-        console.error(`Error geocoding address: ${locAddress}`, error);
+    // Disable double-click zoom while drawing a polygon
+    map.on('draw.modechange', (e) => {
+      if (e.mode === 'draw_polygon') {
+        map.doubleClickZoom.disable();
+      } else {
+        map.doubleClickZoom.enable();
       }
-    }
+    });
 
-    if (hasValidCoords) {
-      map.fitBounds(bounds, { padding: 50 });
-    }
+    getUserLocationAndCenterMap(); // Center map on user location
 
-    setLoading(false);
-  };
+  }, [map]);
 
   useEffect(() => {
-    if (map) {
-      runSearch(searchAddress, searchRadius, premiumFilter);
-    }
-  }, [map, premiumFilter]);
+    const initializeMap = () => {
+      const newMap = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [-74.5, 40],
+        zoom: 9,
+      });
 
-  useEffect(() => {
-    getUserLocationAndSearch();
+      const drawControl = new MapboxDraw({
+        displayControlsDefault: false,
+        controls: {
+          polygon: true,
+          trash: true,
+        },
+      });
+
+      newMap.addControl(drawControl, 'top-left');
+      setDraw(drawControl);
+      setMap(newMap);
+    };
+
+    initializeMap();
   }, []);
 
   return (
     <div className={styles.container}>
-      <button onClick={toggleCollapse} className={styles.toggleButton}>
-        {isCollapsed ? 'Expand Search' : 'Collapse Search'}
-      </button>
+      <div className={styles.utilityBar}>
+        {/* Manual Search Inputs */}
+        <input
+          type="text"
+          value={searchAddress}
+          onChange={(e) => setSearchAddress(e.target.value)}
+          placeholder="Enter address"
+          className={styles.searchInput}
+        />
+        <select
+          value={searchRadius}
+          onChange={(e) => setSearchRadius(e.target.value)}
+          className={styles.searchSelect}
+        >
+          {radiusOptions.map(option => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+        <select
+          value={premiumFilter}
+          onChange={(e) => setPremiumFilter(e.target.value)}
+          className={styles.searchSelect}
+        >
+          {premiumOptions.map(option => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+        <button onClick={runManualSearch} className={styles.searchButton}>
+          Search
+        </button>
 
-      {!isCollapsed && (
-        <div className={styles.searchContainer}>
-          <div className={styles.searchControls}>
-            <input
-              type="text"
-              value={searchAddress}
-              onChange={(e) => setSearchAddress(e.target.value)}
-              placeholder="Enter address"
-              className={styles.searchInput}
-            />
-            <select
-              value={searchRadius}
-              onChange={(e) => setSearchRadius(e.target.value)}
-              className={styles.searchSelect}
-            >
-              {radiusOptions.map(option => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-            <select
-              value={premiumFilter}
-              onChange={(e) => setPremiumFilter(e.target.value)}
-              className={styles.searchSelect}
-            >
-              {premiumOptions.map(option => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-            <button onClick={() => runSearch(searchAddress, searchRadius, premiumFilter)} className={styles.searchButton}>
-              Search
-            </button>
-            {loading && <img src="/loading.gif" alt="Loading..." className={styles.loadingGif} />}
-          </div>
-        </div>
-      )}
+        {/* Draw Perimeter Button */}
+        <button onClick={() => draw.changeMode('draw_polygon')} className={styles.drawButton}>
+          Draw Perimeter
+        </button>
+
+        {/* Loading GIF */}
+        {loading && <img src="/loading.gif" alt="Loading..." className={styles.loadingGif} />}
+      </div>
 
       <div ref={mapContainer} className={styles.mapContainer} />
-
       <Modal isOpen={modalIsOpen} onRequestClose={closeModal} contentLabel="Location Details" style={customModalStyles}>
         {modalData && (
           <div className={styles.modalContent}>
@@ -272,5 +322,3 @@ const Component = () => {
 };
 
 export default Component;
-
- 
