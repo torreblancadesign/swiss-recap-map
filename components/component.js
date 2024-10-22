@@ -262,7 +262,7 @@ const Component = () => {
 
       // Update marker and button after adding to Airtable
       if (business.marker) {
-        business.marker.getElement().style.backgroundColor = "#FF0000";
+        business.marker.getElement().style.color = "#FF0000";
         const button = document.getElementById(`interesting-${business.businessID}`);
         if (button) {
           button.setAttribute('disabled', 'disabled');
