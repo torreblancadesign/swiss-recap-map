@@ -184,7 +184,14 @@ const Component = () => {
 
       console.log("Adding marker for business:", name);
 
-      const marker = new mapboxgl.Marker({ color: isInteresting ? "#FF0000" : "#3FB1CE" })
+      const markerElement = document.createElement('div');
+      markerElement.className = 'marker';
+      markerElement.style.backgroundColor = isInteresting ? "#FF0000" : "#3FB1CE";
+      markerElement.style.width = '20px';
+      markerElement.style.height = '20px';
+      markerElement.style.borderRadius = '50%';
+
+      const marker = new mapboxgl.Marker(markerElement)
         .setLngLat([longitude, latitude])
         .addTo(map);
 
@@ -221,6 +228,7 @@ const Component = () => {
               businessID,
               status: 'Interesting',
               marker,
+              markerElement,
             });
           });
         }
@@ -262,7 +270,7 @@ const Component = () => {
 
       // Update marker and button after adding to Airtable
       if (business.marker) {
-        business.marker.getElement().style.backgroundColor = "#FF0000";
+        business.markerElement.style.backgroundColor = "#FF0000";
         const button = document.getElementById(`interesting-${business.businessID}`);
         if (button) {
           button.setAttribute('disabled', 'disabled');
