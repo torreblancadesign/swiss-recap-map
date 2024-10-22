@@ -7,11 +7,12 @@ import * as turf from '@turf/turf';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css'; // Import draw plugin CSS
 import styles from "../styles/style.module.css";
+import Airtable from "airtable";
 
 // Airtable setup
-const AIRTABLE_BASE_ID = 'appTxnvKxOeLPaZau';
-const AIRTABLE_API_KEY = 'patRH8HKZBvltgwAe.5d911f89fe8ab95f51dc75fdbea0cb39ae2b885238cb87316712f46b8811025';
-const AIRTABLE_TABLE_NAME = 'Locations';
+const AIRTABLE_BASE_ID = 'appfneeayYzKwUswi';
+const AIRTABLE_API_KEY = 'patYHNJ5hea9eGNqX.ded164971cf49f9356c1838f032ede54a9f227563dbc5f89460c7f9795aaedf2';
+const AIRTABLE_TABLE_NAME = 'Map Scout';
 
 // Mapbox access token
 mapboxgl.accessToken = 'pk.eyJ1IjoiZW5yaXF1ZXRjaGF0IiwiYSI6ImNrczVvdnJ5eTFlNWEycHJ3ZXlqZjFhaXUifQ.71mYPeoLXSujYlj4X5bQnQ';
@@ -62,6 +63,23 @@ const Component = () => {
   const [searchRadius, setSearchRadius] = useState(50);
   const [premiumFilter, setPremiumFilter] = useState('all');
   const [loading, setLoading] = useState(false);
+  const [interestingBusinesses, setInterestingBusinesses] = useState(new Set());
+
+  useEffect(() => {
+    fetchInterestingBusinesses();
+  }, []);
+
+  const fetchInterestingBusinesses = () => {
+    base(AIRTABLE_TABLE_NAME)
+      .select({
+        filterByFormula: `Status = 'Interesting'`,
+      })
+      .eachPage((records, fetchNextPage) => {
+        const businesses = new Set(records.map(record => record.fields.businessID));
+        setInterestingBusinesses(businesses);
+        fetchNextPage();
+      });
+  };
 
   // Function to clear all markers
   const clearMarkers = () => {
@@ -149,18 +167,21 @@ const Component = () => {
   // Add business markers with hover popups
   const addBusinessMarkers = (businesses, map) => {
     const newMarkers = businesses.map(business => {
-      const { center: [longitude, latitude], place_name: address } = business;
+      const { center: [longitude, latitude], place_name: address, id: businessID } = business;
       const name = business.text;
       const properties = business.properties || {};
       const phone = properties.tel || 'N/A'; 
       const email = properties.email || 'N/A'; 
       const businessType = properties.category || 'N/A';
+      const isInteresting = interestingBusinesses.has(businessID);
 
       console.log("Adding marker for business:", name);
 
-      const marker = new mapboxgl.Marker()
+      const marker = new mapboxgl.Marker({ color: isInteresting ? "#FF0000" : "#3FB1CE" })
         .setLngLat([longitude, latitude])
         .addTo(map);
+
+      const buttonDisabled = isInteresting ? 'disabled' : '';
 
       marker.getElement().addEventListener('mouseenter', () => {
         const popupContent = `
@@ -169,6 +190,7 @@ const Component = () => {
           <p><strong>Phone:</strong> ${phone}</p>
           <p><strong>Email:</strong> ${email}</p>
           <p><strong>Type:</strong> ${businessType}</p>
+          <button ${buttonDisabled} id="interesting-${businessID}" class="interesting-button">Interesting</button>
         `;
 
         if (popup) {
@@ -181,6 +203,19 @@ const Component = () => {
           .addTo(map);
 
         setPopup(newPopup);
+
+        if (!isInteresting) {
+          document.getElementById(`interesting-${businessID}`).addEventListener('click', () => {
+            addBusinessToAirtable({
+              name,
+              address,
+              latitude,
+              longitude,
+              businessID,
+              status: 'Interesting',
+            });
+          });
+        }
       });
 
       marker.getElement().addEventListener('mouseleave', () => {
@@ -194,6 +229,29 @@ const Component = () => {
     });
 
     setMarkers(newMarkers);
+  };
+
+  // Add business to Airtable
+  const addBusinessToAirtable = (business) => {
+    base(AIRTABLE_TABLE_NAME).create([
+      {
+        fields: {
+          Name: business.name,
+          Address: business.address,
+          latitude: business.latitude,
+          longitude: business.longitude,
+          Status: business.status,
+          businessID: business.businessID,
+        },
+      },
+    ], (err, records) => {
+      if (err) {
+        console.error("Error adding business to Airtable:", err);
+        return;
+      }
+      console.log("Business added to Airtable:", records);
+      fetchInterestingBusinesses();
+    });
   };
 
   // Function to get user location and center the map
