@@ -184,14 +184,7 @@ const Component = () => {
 
       console.log("Adding marker for business:", name);
 
-      const markerElement = document.createElement('div');
-      markerElement.className = 'marker';
-      markerElement.style.backgroundColor = isInteresting ? "#FF0000" : "#3FB1CE";
-      markerElement.style.width = '20px';
-      markerElement.style.height = '20px';
-      markerElement.style.borderRadius = '50%';
-
-      const marker = new mapboxgl.Marker(markerElement)
+      const marker = new mapboxgl.Marker({ color: isInteresting ? "#FF0000" : "#3FB1CE" })
         .setLngLat([longitude, latitude])
         .addTo(map);
 
@@ -228,7 +221,6 @@ const Component = () => {
               businessID,
               status: 'Interesting',
               marker,
-              markerElement,
             });
           });
         }
@@ -268,18 +260,12 @@ const Component = () => {
       console.log("Business added to Airtable:", records);
       fetchInterestingBusinesses();
 
-      // Refresh markers to update colors and disable button for already marked businesses
-      clearMarkers();
-      if (map) {
-        if (draw) {
-          const drawnFeatures = draw.getAll();
-          if (drawnFeatures && drawnFeatures.features.length > 0) {
-            const polygon = drawnFeatures.features[0];
-            const bbox = turf.bbox(polygon);
-            searchForBusinessesWithinPolygon(bbox);
-          }
-        } else {
-          runManualSearch();
+      // Update marker and button after adding to Airtable
+      if (business.marker) {
+        business.marker.getElement().style.color = "#FF0000";
+        const button = document.getElementById(`interesting-${business.businessID}`);
+        if (button) {
+          button.setAttribute('disabled', 'disabled');
         }
       }
     });
