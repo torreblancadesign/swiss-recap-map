@@ -17,6 +17,11 @@ const AIRTABLE_TABLE_NAME = 'Map Scout';
 // Mapbox access token
 mapboxgl.accessToken = 'pk.eyJ1IjoiZW5yaXF1ZXRjaGF0IiwiYSI6ImNrczVvdnJ5eTFlNWEycHJ3ZXlqZjFhaXUifQ.71mYPeoLXSujYlj4X5bQnQ';
 
+let base;
+if (typeof window !== "undefined") {
+  base = new Airtable({ apiKey: AIRTABLE_API_KEY }).base(AIRTABLE_BASE_ID);
+}
+
 // Initialize the Mapbox Geocoding Service
 const geocodingClient = GeocodingService({ accessToken: mapboxgl.accessToken });
 
@@ -66,7 +71,9 @@ const Component = () => {
   const [interestingBusinesses, setInterestingBusinesses] = useState(new Set());
 
   useEffect(() => {
-    fetchInterestingBusinesses();
+    if (base) {
+      fetchInterestingBusinesses();
+    }
   }, []);
 
   const fetchInterestingBusinesses = () => {
