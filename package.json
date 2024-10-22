@@ -1,1 +1,32 @@
-{"name":"nextjs-app","version":"1.0.0","description":"Next.js App","main":"index.js","scripts":{"dev":"next","start":"next start","build":"next build"},"keywords":["Next.js","React"],"author":"","license":"ISC","dependencies":{"@mapbox/mapbox-gl-draw":"^1.4.3","@mapbox/mapbox-sdk":"^0.13.7","@turf/turf":"^7.1.0","axios":"^0.21.1","mapbox-gl":"^2.15.0","next":"^12.0.7","react":"^17.0.2","react-dom":"^17.0.2","react-modal":"^3.14.3"},"engines":{"node":"20.x"}}
+{
+  "name": "nextjs-app",
+  "version": "1.0.0",
+  "description": "Next.js App",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next",
+    "start": "next start",
+    "build": "next build"
+  },
+  "keywords": [
+    "Next.js",
+    "React"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@mapbox/mapbox-gl-draw": "^1.4.3",
+    "@mapbox/mapbox-sdk": "^0.13.7",
+    "@turf/turf": "^7.1.0",
+    "axios": "^0.21.1",
+    "mapbox-gl": "^2.15.0",
+    "next": "^12.0.7",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-modal": "^3.14.3",
+    "airtable": "^0.11.3"
+  },
+  "engines": {
+    "node": "20.x"
+  }
+}
