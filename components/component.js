@@ -220,6 +220,7 @@ const Component = () => {
               longitude,
               businessID,
               status: 'Interesting',
+              marker,
             });
           });
         }
@@ -258,6 +259,15 @@ const Component = () => {
       }
       console.log("Business added to Airtable:", records);
       fetchInterestingBusinesses();
+
+      // Update marker and button after adding to Airtable
+      if (business.marker) {
+        business.marker.getElement().style.backgroundColor = "#FF0000";
+        const button = document.getElementById(`interesting-${business.businessID}`);
+        if (button) {
+          button.setAttribute('disabled', 'disabled');
+        }
+      }
     });
   };
 
