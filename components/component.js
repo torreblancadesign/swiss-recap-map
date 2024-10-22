@@ -266,8 +266,11 @@ const Component = () => {
         const button = document.getElementById(`interesting-${business.businessID}`);
         if (button) {
           button.setAttribute('disabled', 'disabled');
+          button.style.backgroundColor = "#d3d3d3";
         }
       }
+      // Add to the interesting businesses set to ensure it remains disabled
+      setInterestingBusinesses(prev => new Set(prev.add(business.businessID)));
     });
   };
 
