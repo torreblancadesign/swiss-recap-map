@@ -239,7 +239,7 @@ const Component = () => {
     setMarkers(newMarkers);
   };
 
- const updateMarkerColor = (business, newColor) => {
+const updateMarkerColor = (business, newColor) => {
   // Remove the old marker
   business.marker.remove();
 
@@ -250,18 +250,14 @@ const Component = () => {
 
   // Reattach hover and click event listeners for the new marker
   newMarker.getElement().addEventListener('mouseenter', () => {
-    const isInteresting = interestingBusinesses.has(business.businessID);
-    const buttonDisabled = isInteresting ? 'disabled' : '';
-    const buttonClass = isInteresting ? 'interesting-button disabled' : 'interesting-button'; // Add a disabled class
-
     const popupContent = `
       <h4>${business.name}</h4>
       <p><strong>Address:</strong> ${business.address}</p>
       <p><strong>Phone:</strong> ${business.phone || 'N/A'}</p>
       <p><strong>Email:</strong> ${business.email || 'N/A'}</p>
       <p><strong>Type:</strong> ${business.businessType || 'N/A'}</p>
-      <button ${buttonDisabled} id="interesting-${business.businessID}" class="${buttonClass}">Interesting</button>
-    `;
+      <button disabled id="interesting-${business.businessID}" class="interesting-button">Interesting</button>
+    `; // The button is always disabled
 
     const popup = new mapboxgl.Popup({ offset: 25 })
       .setLngLat([business.longitude, business.latitude])
@@ -269,21 +265,6 @@ const Component = () => {
       .addTo(map);
 
     setPopup(popup);
-
-    // Add click event listener for "Interesting" button
-    if (!isInteresting) {
-      document.getElementById(`interesting-${business.businessID}`).addEventListener('click', () => {
-        addBusinessToAirtable({
-          name: business.name,
-          address: business.address,
-          latitude: business.latitude,
-          longitude: business.longitude,
-          businessID: business.businessID,
-          status: 'Interesting',
-          marker: newMarker, // Pass the updated marker
-        });
-      });
-    }
   });
 
   newMarker.getElement().addEventListener('mouseleave', () => {
