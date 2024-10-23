@@ -69,21 +69,29 @@ const Component = () => {
   const [premiumFilter, setPremiumFilter] = useState('all');
   const [loading, setLoading] = useState(false);
   const [interestingBusinesses, setInterestingBusinesses] = useState(new Set());
+  const [notInterestingBusinesses, setNotInterestingBusinesses] = useState(new Set()); // Track Not Interesting businesses
 
   useEffect(() => {
     if (base) {
-      fetchInterestingBusinesses();
+      fetchBusinessesFromAirtable();
     }
   }, []);
 
-  const fetchInterestingBusinesses = () => {
+  const fetchBusinessesFromAirtable = () => {
     base(AIRTABLE_TABLE_NAME)
-      .select({
-        filterByFormula: `Status = 'Interesting'`,
-      })
+      .select()
       .eachPage((records, fetchNextPage) => {
-        const businesses = new Set(records.map(record => record.fields.businessID));
-        setInterestingBusinesses(businesses);
+        const interesting = new Set();
+        const notInteresting = new Set();
+        records.forEach(record => {
+          if (record.fields.Status === 'Interesting') {
+            interesting.add(record.fields.businessID);
+          } else if (record.fields.Status === 'Not Interesting') {
+            notInteresting.add(record.fields.businessID);
+          }
+        });
+        setInterestingBusinesses(interesting);
+        setNotInterestingBusinesses(notInteresting);
         fetchNextPage();
       });
   };
@@ -181,15 +189,17 @@ const Component = () => {
       const email = properties.email || 'N/A'; 
       const businessType = properties.category || 'N/A';
       const isInteresting = interestingBusinesses.has(businessID);
+      const isNotInteresting = notInterestingBusinesses.has(businessID);
 
       console.log("Adding marker for business:", name);
 
-      const marker = new mapboxgl.Marker({ color: isInteresting ? "#FF0000" : "#3FB1CE" })
+      const markerColor = isInteresting ? "#FF0000" : isNotInteresting ? "#000000" : "#3FB1CE";
+      const marker = new mapboxgl.Marker({ color: markerColor })
         .setLngLat([longitude, latitude])
         .addTo(map);
 
       const buttonDisabledInteresting = isInteresting ? 'disabled' : '';
-      const buttonDisabledNotInteresting = isInteresting ? '' : 'disabled';
+      const buttonDisabledNotInteresting = isNotInteresting ? 'disabled' : '';
 
       marker.getElement().addEventListener('mouseenter', () => {
         const popupContent = `
@@ -257,7 +267,8 @@ const Component = () => {
     const newMarker = new mapboxgl.Marker({ color: newColor })
       .setLngLat([business.longitude, business.latitude])
       .addTo(map);
-        // Reattach hover and click event listeners for the new marker
+
+    // Reattach hover and click event listeners for the new marker
     newMarker.getElement().addEventListener('mouseenter', () => {
       const isInteresting = interestingBusinesses.has(business.businessID);
       const buttonDisabledInteresting = isInteresting ? 'disabled' : '';
@@ -306,7 +317,7 @@ const Component = () => {
     const interestingButton = document.getElementById(`interesting-${business.businessID}`);
     const notInterestingButton = document.getElementById(`not-interesting-${business.businessID}`);
 
-    // Disable the button that was clicked
+    // Toggle button states and update marker
     if (status === 'Interesting') {
       interestingButton.setAttribute('disabled', 'disabled');
       notInterestingButton.removeAttribute('disabled');
@@ -339,7 +350,7 @@ const Component = () => {
               console.error('Error updating business status:', updateErr);
             } else {
               console.log(`Business ${business.businessID} updated to ${status}.`);
-              fetchInterestingBusinesses();
+              fetchBusinessesFromAirtable();
             }
           });
         } else {
@@ -356,7 +367,7 @@ const Component = () => {
               console.error('Error adding new business to Airtable:', createErr);
             } else {
               console.log(`Business ${business.businessID} added as ${status}.`);
-              fetchInterestingBusinesses();
+              fetchBusinessesFromAirtable();
             }
           });
         }
