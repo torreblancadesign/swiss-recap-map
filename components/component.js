@@ -239,7 +239,7 @@ const Component = () => {
     setMarkers(newMarkers);
   };
 
-  const updateMarkerColor = (business, newColor) => {
+ const updateMarkerColor = (business, newColor) => {
   // Remove the old marker
   business.marker.remove();
 
@@ -252,6 +252,7 @@ const Component = () => {
   newMarker.getElement().addEventListener('mouseenter', () => {
     const isInteresting = interestingBusinesses.has(business.businessID);
     const buttonDisabled = isInteresting ? 'disabled' : '';
+    const buttonClass = isInteresting ? 'interesting-button disabled' : 'interesting-button'; // Add a disabled class
 
     const popupContent = `
       <h4>${business.name}</h4>
@@ -259,7 +260,7 @@ const Component = () => {
       <p><strong>Phone:</strong> ${business.phone || 'N/A'}</p>
       <p><strong>Email:</strong> ${business.email || 'N/A'}</p>
       <p><strong>Type:</strong> ${business.businessType || 'N/A'}</p>
-      <button ${buttonDisabled} id="interesting-${business.businessID}" class="interesting-button">Interesting</button>
+      <button ${buttonDisabled} id="interesting-${business.businessID}" class="${buttonClass}">Interesting</button>
     `;
 
     const popup = new mapboxgl.Popup({ offset: 25 })
@@ -295,6 +296,7 @@ const Component = () => {
   // Update the business object with the new marker
   business.marker = newMarker;
 };
+
 
 
 
