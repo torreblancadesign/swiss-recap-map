@@ -79,7 +79,7 @@ const Component = () => {
   const fetchInterestingBusinesses = () => {
     base(AIRTABLE_TABLE_NAME)
       .select({
-        filterByFormula: Status = 'Interesting',
+        filterByFormula: `Status = 'Interesting'`,
       })
       .eachPage((records, fetchNextPage) => {
         const businesses = new Set(records.map(record => record.fields.businessID));
@@ -191,14 +191,14 @@ const Component = () => {
       const buttonDisabled = isInteresting ? 'disabled' : '';
 
       marker.getElement().addEventListener('mouseenter', () => {
-        const popupContent = 
+        const popupContent = `
           <h4>${name}</h4>
           <p><strong>Address:</strong> ${address}</p>
           <p><strong>Phone:</strong> ${phone}</p>
           <p><strong>Email:</strong> ${email}</p>
           <p><strong>Type:</strong> ${businessType}</p>
           <button ${buttonDisabled} id="interesting-${businessID}" class="interesting-button">Interesting</button>
-        ;
+        `;
 
         if (popup) {
           popup.remove();
@@ -212,7 +212,7 @@ const Component = () => {
         setPopup(newPopup);
 
         if (!isInteresting) {
-          document.getElementById(interesting-${businessID}).addEventListener('click', () => {
+          document.getElementById(`interesting-${businessID}`).addEventListener('click', () => {
             addBusinessToAirtable({
               name,
               address,
@@ -263,7 +263,7 @@ const Component = () => {
       // Update marker and button after adding to Airtable
       if (business.marker) {
         business.marker.getElement().style.color = "#FF0000";
-        const button = document.getElementById(interesting-${business.businessID});
+        const button = document.getElementById(`interesting-${business.businessID}`);
         if (button) {
           button.setAttribute('disabled', 'disabled');
         }
