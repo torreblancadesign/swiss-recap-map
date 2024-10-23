@@ -188,7 +188,8 @@ const Component = () => {
         .setLngLat([longitude, latitude])
         .addTo(map);
 
-      const buttonDisabled = isInteresting ? 'disabled' : '';
+      const buttonDisabledInteresting = isInteresting ? 'disabled' : '';
+      const buttonDisabledNotInteresting = isInteresting ? '' : 'disabled';
 
       marker.getElement().addEventListener('mouseenter', () => {
         const popupContent = `
@@ -197,7 +198,8 @@ const Component = () => {
           <p><strong>Phone:</strong> ${phone}</p>
           <p><strong>Email:</strong> ${email}</p>
           <p><strong>Type:</strong> ${businessType}</p>
-          <button ${buttonDisabled} id="interesting-${businessID}" class="interesting-button">Interesting</button>
+          <button ${buttonDisabledInteresting} id="interesting-${businessID}" class="interesting-button">Interesting</button>
+          <button ${buttonDisabledNotInteresting} id="not-interesting-${businessID}" class="not-interesting-button">Not Interesting</button>
         `;
 
         if (popup) {
@@ -211,19 +213,27 @@ const Component = () => {
 
         setPopup(newPopup);
 
-        if (!isInteresting) {
-          document.getElementById(`interesting-${businessID}`).addEventListener('click', () => {
-            addBusinessToAirtable({
-              name,
-              address,
-              latitude,
-              longitude,
-              businessID,
-              status: 'Interesting',
-              marker,
-            });
-          });
-        }
+        document.getElementById(`interesting-${businessID}`).addEventListener('click', () => {
+          updateBusinessStatus({
+            name,
+            address,
+            latitude,
+            longitude,
+            businessID,
+            marker,
+          }, 'Interesting', "#FF0000");
+        });
+
+        document.getElementById(`not-interesting-${businessID}`).addEventListener('click', () => {
+          updateBusinessStatus({
+            name,
+            address,
+            latitude,
+            longitude,
+            businessID,
+            marker,
+          }, 'Not Interesting', "#000000");
+        });
       });
 
       marker.getElement().addEventListener('mouseleave', () => {
@@ -239,84 +249,119 @@ const Component = () => {
     setMarkers(newMarkers);
   };
 
-const updateMarkerColor = (business, newColor) => {
-  // Remove the old marker
-  business.marker.remove();
+  const updateMarkerColor = (business, newColor) => {
+    // Remove the old marker
+    business.marker.remove();
 
-  // Create a new marker at the same coordinates with the new color
-  const newMarker = new mapboxgl.Marker({ color: newColor })
-    .setLngLat([business.longitude, business.latitude])
-    .addTo(map);
-
-  // Reattach hover and click event listeners for the new marker
-  newMarker.getElement().addEventListener('mouseenter', () => {
-    const popupContent = `
-      <h4>${business.name}</h4>
-      <p><strong>Address:</strong> ${business.address}</p>
-      <p><strong>Phone:</strong> ${business.phone || 'N/A'}</p>
-      <p><strong>Email:</strong> ${business.email || 'N/A'}</p>
-      <p><strong>Type:</strong> ${business.businessType || 'N/A'}</p>
-      <button disabled id="interesting-${business.businessID}" class="interesting-button">Interesting</button>
-    `; // The button is always disabled
-
-    const popup = new mapboxgl.Popup({ offset: 25 })
+    // Create a new marker at the same coordinates with the new color
+    const newMarker = new mapboxgl.Marker({ color: newColor })
       .setLngLat([business.longitude, business.latitude])
-      .setHTML(popupContent)
       .addTo(map);
+        // Reattach hover and click event listeners for the new marker
+    newMarker.getElement().addEventListener('mouseenter', () => {
+      const isInteresting = interestingBusinesses.has(business.businessID);
+      const buttonDisabledInteresting = isInteresting ? 'disabled' : '';
+      const buttonDisabledNotInteresting = isInteresting ? '' : 'disabled';
 
-    setPopup(popup);
-  });
+      const popupContent = `
+        <h4>${business.name}</h4>
+        <p><strong>Address:</strong> ${business.address}</p>
+        <p><strong>Phone:</strong> ${business.phone || 'N/A'}</p>
+        <p><strong>Email:</strong> ${business.email || 'N/A'}</p>
+        <p><strong>Type:</strong> ${business.businessType || 'N/A'}</p>
+        <button ${buttonDisabledInteresting} id="interesting-${business.businessID}" class="interesting-button">Interesting</button>
+        <button ${buttonDisabledNotInteresting} id="not-interesting-${business.businessID}" class="not-interesting-button">Not Interesting</button>
+      `;
 
-  newMarker.getElement().addEventListener('mouseleave', () => {
-    if (popup) {
-      popup.remove();
-      setPopup(null);
+      const popup = new mapboxgl.Popup({ offset: 25 })
+        .setLngLat([business.longitude, business.latitude])
+        .setHTML(popupContent)
+        .addTo(map);
+
+      setPopup(popup);
+
+      // Add click event listeners for buttons
+      document.getElementById(`interesting-${business.businessID}`).addEventListener('click', () => {
+        updateBusinessStatus(business, 'Interesting', "#FF0000");
+      });
+
+      document.getElementById(`not-interesting-${business.businessID}`).addEventListener('click', () => {
+        updateBusinessStatus(business, 'Not Interesting', "#000000");
+      });
+    });
+
+    newMarker.getElement().addEventListener('mouseleave', () => {
+      if (popup) {
+        popup.remove();
+        setPopup(null);
+      }
+    });
+
+    // Update the business object with the new marker
+    business.marker = newMarker;
+  };
+
+  // Function to update business status in Airtable
+  const updateBusinessStatus = (business, status, newColor) => {
+    const interestingButton = document.getElementById(`interesting-${business.businessID}`);
+    const notInterestingButton = document.getElementById(`not-interesting-${business.businessID}`);
+
+    // Disable the button that was clicked
+    if (status === 'Interesting') {
+      interestingButton.setAttribute('disabled', 'disabled');
+      notInterestingButton.removeAttribute('disabled');
+    } else {
+      notInterestingButton.setAttribute('disabled', 'disabled');
+      interestingButton.removeAttribute('disabled');
     }
-  });
 
-  // Update the business object with the new marker
-  business.marker = newMarker;
-};
+    // Update the marker color immediately
+    updateMarkerColor(business, newColor);
 
+    // Check if a record for this business already exists, if so, update it
+    base(AIRTABLE_TABLE_NAME)
+      .select({
+        filterByFormula: `{businessID} = '${business.businessID}'`
+      })
+      .firstPage((err, records) => {
+        if (err) {
+          console.error('Error finding business in Airtable:', err);
+          return;
+        }
 
-
-
-
-  // Add business to Airtable
- const addBusinessToAirtable = (business) => {
-  // Disable button immediately after clicking
-  const button = document.getElementById(`interesting-${business.businessID}`);
-  if (button) {
-    button.setAttribute('disabled', 'disabled');
-  }
-
-  // Update the marker color immediately to red
-  updateMarkerColor(business, "#FF0000");
-
-  // Add the business to Airtable
-  base(AIRTABLE_TABLE_NAME).create([
-    {
-      fields: {
-        Name: business.name,
-        Address: business.address,
-        latitude: business.latitude,
-        longitude: business.longitude,
-        Status: business.status,
-        businessID: business.businessID,
-      },
-    },
-  ], (err, records) => {
-    if (err) {
-      console.error("Error adding business to Airtable:", err);
-      return;
-    }
-    console.log("Business added to Airtable:", records);
-
-    // Fetch the latest 'interesting' businesses to ensure UI consistency on reload
-    fetchInterestingBusinesses();
-  });
-};
-
+        if (records.length > 0) {
+          // Update the existing record
+          const recordId = records[0].id;
+          base(AIRTABLE_TABLE_NAME).update(recordId, {
+            "Status": status
+          }, (updateErr) => {
+            if (updateErr) {
+              console.error('Error updating business status:', updateErr);
+            } else {
+              console.log(`Business ${business.businessID} updated to ${status}.`);
+              fetchInterestingBusinesses();
+            }
+          });
+        } else {
+          // Add a new record if not found
+          base(AIRTABLE_TABLE_NAME).create({
+            "Name": business.name,
+            "Address": business.address,
+            "latitude": business.latitude,
+            "longitude": business.longitude,
+            "Status": status,
+            "businessID": business.businessID
+          }, (createErr) => {
+            if (createErr) {
+              console.error('Error adding new business to Airtable:', createErr);
+            } else {
+              console.log(`Business ${business.businessID} added as ${status}.`);
+              fetchInterestingBusinesses();
+            }
+          });
+        }
+      });
+  };
 
   // Function to get user location and center the map
   const getUserLocationAndCenterMap = () => {
