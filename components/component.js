@@ -250,12 +250,16 @@ const Component = () => {
 
   // Reattach hover and click event listeners for the new marker
   newMarker.getElement().addEventListener('mouseenter', () => {
+    const isInteresting = interestingBusinesses.has(business.businessID);
+    const buttonDisabled = isInteresting ? 'disabled' : '';
+
     const popupContent = `
       <h4>${business.name}</h4>
       <p><strong>Address:</strong> ${business.address}</p>
       <p><strong>Phone:</strong> ${business.phone || 'N/A'}</p>
       <p><strong>Email:</strong> ${business.email || 'N/A'}</p>
       <p><strong>Type:</strong> ${business.businessType || 'N/A'}</p>
+      <button ${buttonDisabled} id="interesting-${business.businessID}" class="interesting-button">Interesting</button>
     `;
 
     const popup = new mapboxgl.Popup({ offset: 25 })
@@ -264,6 +268,21 @@ const Component = () => {
       .addTo(map);
 
     setPopup(popup);
+
+    // Add click event listener for "Interesting" button
+    if (!isInteresting) {
+      document.getElementById(`interesting-${business.businessID}`).addEventListener('click', () => {
+        addBusinessToAirtable({
+          name: business.name,
+          address: business.address,
+          latitude: business.latitude,
+          longitude: business.longitude,
+          businessID: business.businessID,
+          status: 'Interesting',
+          marker: newMarker, // Pass the updated marker
+        });
+      });
+    }
   });
 
   newMarker.getElement().addEventListener('mouseleave', () => {
@@ -276,6 +295,7 @@ const Component = () => {
   // Update the business object with the new marker
   business.marker = newMarker;
 };
+
 
 
 
