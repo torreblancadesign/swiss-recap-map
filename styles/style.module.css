@@ -140,6 +140,13 @@
   font-weight: 600;
 }
 
+.interesting-button.disabled {
+  background-color: #cccccc; /* Gray background */
+  cursor: not-allowed;       /* Disable pointer */
+  color: #666666;            /* Lighter text color */
+}
+
+
 /* Modal content styling */
 .modalContent {
   position: relative;
