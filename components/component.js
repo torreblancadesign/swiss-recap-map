@@ -239,37 +239,55 @@ const Component = () => {
     setMarkers(newMarkers);
   };
 
-  // Add business to Airtable
-  const addBusinessToAirtable = (business) => {
-    base(AIRTABLE_TABLE_NAME).create([
-      {
-        fields: {
-          Name: business.name,
-          Address: business.address,
-          latitude: business.latitude,
-          longitude: business.longitude,
-          Status: business.status,
-          businessID: business.businessID,
-        },
-      },
-    ], (err, records) => {
-      if (err) {
-        console.error("Error adding business to Airtable:", err);
-        return;
-      }
-      console.log("Business added to Airtable:", records);
-      fetchInterestingBusinesses();
+  const updateMarkerColor = (business, newColor) => {
+  // Remove the old marker
+  business.marker.remove();
 
-      // Update marker and button after adding to Airtable
-      if (business.marker) {
-        business.marker.getElement().style.color = "#FF0000";
-        const button = document.getElementById(`interesting-${business.businessID}`);
-        if (button) {
-          button.setAttribute('disabled', 'disabled');
-        }
-      }
-    });
-  };
+  // Create a new marker at the same coordinates with the new color
+  const newMarker = new mapboxgl.Marker({ color: newColor })
+    .setLngLat([business.longitude, business.latitude])
+    .addTo(map);
+
+  // Update the business object with the new marker
+  business.marker = newMarker;
+};
+
+
+  // Add business to Airtable
+ const addBusinessToAirtable = (business) => {
+  // Disable button immediately after clicking
+  const button = document.getElementById(`interesting-${business.businessID}`);
+  if (button) {
+    button.setAttribute('disabled', 'disabled');
+  }
+
+  // Update the marker color immediately to red
+  updateMarkerColor(business, "#FF0000");
+
+  // Add the business to Airtable
+  base(AIRTABLE_TABLE_NAME).create([
+    {
+      fields: {
+        Name: business.name,
+        Address: business.address,
+        latitude: business.latitude,
+        longitude: business.longitude,
+        Status: business.status,
+        businessID: business.businessID,
+      },
+    },
+  ], (err, records) => {
+    if (err) {
+      console.error("Error adding business to Airtable:", err);
+      return;
+    }
+    console.log("Business added to Airtable:", records);
+
+    // Fetch the latest 'interesting' businesses to ensure UI consistency on reload
+    fetchInterestingBusinesses();
+  });
+};
+
 
   // Function to get user location and center the map
   const getUserLocationAndCenterMap = () => {
