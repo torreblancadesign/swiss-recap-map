@@ -248,9 +248,35 @@ const Component = () => {
     .setLngLat([business.longitude, business.latitude])
     .addTo(map);
 
+  // Reattach hover and click event listeners for the new marker
+  newMarker.getElement().addEventListener('mouseenter', () => {
+    const popupContent = `
+      <h4>${business.name}</h4>
+      <p><strong>Address:</strong> ${business.address}</p>
+      <p><strong>Phone:</strong> ${business.phone || 'N/A'}</p>
+      <p><strong>Email:</strong> ${business.email || 'N/A'}</p>
+      <p><strong>Type:</strong> ${business.businessType || 'N/A'}</p>
+    `;
+
+    const popup = new mapboxgl.Popup({ offset: 25 })
+      .setLngLat([business.longitude, business.latitude])
+      .setHTML(popupContent)
+      .addTo(map);
+
+    setPopup(popup);
+  });
+
+  newMarker.getElement().addEventListener('mouseleave', () => {
+    if (popup) {
+      popup.remove();
+      setPopup(null);
+    }
+  });
+
   // Update the business object with the new marker
   business.marker = newMarker;
 };
+
 
 
   // Add business to Airtable
