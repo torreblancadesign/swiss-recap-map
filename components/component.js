@@ -239,42 +239,37 @@ const Component = () => {
     setMarkers(newMarkers);
   };
 
- // Add business to Airtable and update UI instantly
-const addBusinessToAirtable = (business) => {
-  // Disable button immediately after clicking
-  const button = document.getElementById(`interesting-${business.businessID}`);
-  if (button) {
-    button.setAttribute('disabled', 'disabled');
-  }
-
-  // Change the marker color immediately
-  if (business.marker) {
-    business.marker.getElement().style.color = "#FF0000";
-  }
-
-  // Add the business to Airtable
-  base(AIRTABLE_TABLE_NAME).create([
-    {
-      fields: {
-        Name: business.name,
-        Address: business.address,
-        latitude: business.latitude,
-        longitude: business.longitude,
-        Status: business.status,
-        businessID: business.businessID,
+  // Add business to Airtable
+  const addBusinessToAirtable = (business) => {
+    base(AIRTABLE_TABLE_NAME).create([
+      {
+        fields: {
+          Name: business.name,
+          Address: business.address,
+          latitude: business.latitude,
+          longitude: business.longitude,
+          Status: business.status,
+          businessID: business.businessID,
+        },
       },
-    },
-  ], (err, records) => {
-    if (err) {
-      console.error("Error adding business to Airtable:", err);
-      return;
-    }
-    console.log("Business added to Airtable:", records);
+    ], (err, records) => {
+      if (err) {
+        console.error("Error adding business to Airtable:", err);
+        return;
+      }
+      console.log("Business added to Airtable:", records);
+      fetchInterestingBusinesses();
 
-    // Fetch the latest 'interesting' businesses to ensure UI consistency on reload
-    fetchInterestingBusinesses();
-  });
-};
+      // Update marker and button after adding to Airtable
+      if (business.marker) {
+        business.marker.getElement().style.color = "#FF0000";
+        const button = document.getElementById(interesting-${business.businessID});
+        if (button) {
+          button.setAttribute('disabled', 'disabled');
+        }
+      }
+    });
+  };
 
 
   // Function to get user location and center the map
