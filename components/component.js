@@ -202,7 +202,7 @@ const Component = () => {
       const buttonDisabledNotInteresting = isNotInteresting ? 'disabled' : '';
 
       marker.getElement().addEventListener('mouseenter', () => {
-        const popupContent = 
+        const popupContent = `
           <h4>${name}</h4>
           <p><strong>Address:</strong> ${address}</p>
           <p><strong>Phone:</strong> ${phone}</p>
@@ -210,7 +210,7 @@ const Component = () => {
           <p><strong>Type:</strong> ${businessType}</p>
           <button ${buttonDisabledInteresting} id="interesting-${businessID}" class="interesting-button">Interesting</button>
           <button ${buttonDisabledNotInteresting} id="not-interesting-${businessID}" class="not-interesting-button">Not Interesting</button>
-        ;
+        `;
 
         if (popup) {
           popup.remove();
@@ -223,7 +223,7 @@ const Component = () => {
 
         setPopup(newPopup);
 
-        document.getElementById(interesting-${businessID}).addEventListener('click', () => {
+        document.getElementById(`interesting-${businessID}`).addEventListener('click', () => {
           updateBusinessStatus({
             name,
             address,
@@ -234,7 +234,7 @@ const Component = () => {
           }, 'Interesting', "#FF0000");
         });
 
-        document.getElementById(not-interesting-${businessID}).addEventListener('click', () => {
+        document.getElementById(`not-interesting-${businessID}`).addEventListener('click', () => {
           updateBusinessStatus({
             name,
             address,
@@ -277,7 +277,7 @@ const Component = () => {
     const buttonDisabledInteresting = isInteresting ? 'disabled' : '';
     const buttonDisabledNotInteresting = isNotInteresting ? 'disabled' : '';
 
-    const popupContent = 
+    const popupContent = `
       <h4>${business.name}</h4>
       <p><strong>Address:</strong> ${business.address}</p>
       <p><strong>Phone:</strong> ${business.phone || 'N/A'}</p>
@@ -285,7 +285,7 @@ const Component = () => {
       <p><strong>Type:</strong> ${business.businessType || 'N/A'}</p>
       <button ${buttonDisabledInteresting} id="interesting-${business.businessID}" class="interesting-button">Interesting</button>
       <button ${buttonDisabledNotInteresting} id="not-interesting-${business.businessID}" class="not-interesting-button">Not Interesting</button>
-    ;
+    `;
 
     const popup = new mapboxgl.Popup({ offset: 25 })
       .setLngLat([business.longitude, business.latitude])
@@ -295,11 +295,11 @@ const Component = () => {
     setPopup(popup);
 
     // Add click event listeners for buttons
-    document.getElementById(interesting-${business.businessID}).addEventListener('click', () => {
+    document.getElementById(`interesting-${business.businessID}`).addEventListener('click', () => {
       updateBusinessStatus(business, 'Interesting', "#FF0000");
     });
 
-    document.getElementById(not-interesting-${business.businessID}).addEventListener('click', () => {
+    document.getElementById(`not-interesting-${business.businessID}`).addEventListener('click', () => {
       updateBusinessStatus(business, 'Not Interesting', "#000000");
     });
   });
@@ -317,8 +317,8 @@ const Component = () => {
 
 // Function to update business status in Airtable
 const updateBusinessStatus = (business, status, newColor) => {
-  const interestingButton = document.getElementById(interesting-${business.businessID});
-  const notInterestingButton = document.getElementById(not-interesting-${business.businessID});
+  const interestingButton = document.getElementById(`interesting-${business.businessID}`);
+  const notInterestingButton = document.getElementById(`not-interesting-${business.businessID}`);
 
   // Disable the button that was clicked
   if (status === 'Interesting') {
@@ -339,7 +339,7 @@ const updateBusinessStatus = (business, status, newColor) => {
   // Check if a record for this business already exists, if so, update it
   base(AIRTABLE_TABLE_NAME)
     .select({
-      filterByFormula: {businessID} = '${business.businessID}'
+      filterByFormula: `{businessID} = '${business.businessID}'`
     })
     .firstPage((err, records) => {
       if (err) {
@@ -356,7 +356,7 @@ const updateBusinessStatus = (business, status, newColor) => {
           if (updateErr) {
             console.error('Error updating business status:', updateErr);
           } else {
-            console.log(Business ${business.businessID} updated to ${status}.);
+            console.log(`Business ${business.businessID} updated to ${status}.`);
           }
         });
       } else {
@@ -372,7 +372,7 @@ const updateBusinessStatus = (business, status, newColor) => {
           if (createErr) {
             console.error('Error adding new business to Airtable:', createErr);
           } else {
-            console.log(Business ${business.businessID} added as ${status}.);
+            console.log(`Business ${business.businessID} added as ${status}.`);
           }
         });
       }
