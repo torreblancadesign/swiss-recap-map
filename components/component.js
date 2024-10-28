@@ -70,6 +70,8 @@ const Component = () => {
   const [loading, setLoading] = useState(false);
   const [interestingBusinesses, setInterestingBusinesses] = useState(new Set());
   const [notInterestingBusinesses, setNotInterestingBusinesses] = useState(new Set()); // Track Not Interesting businesses
+  const [engagmenetBusinesses, setEngagementBusinesses] = useState(new Set());
+  const [negativeBusinesses, setNegativeBusinesses] = useState(new Set()); // Track Not Interesting businesses
 
   useEffect(() => {
     if (base) {
@@ -83,15 +85,24 @@ const Component = () => {
       .eachPage((records, fetchNextPage) => {
         const interesting = new Set();
         const notInteresting = new Set();
+        const engagement = new Set();
+        const negative = new Set();
         records.forEach(record => {
           if (record.fields.Status === 'Interesting') {
             interesting.add(record.fields.businessID);
           } else if (record.fields.Status === 'Not Interesting') {
             notInteresting.add(record.fields.businessID);
+          } else if (record.fields.Status === 'Engagement') {
+            engagement.add(record.fields.businessID);
+          } else if (record.fields.Status === 'Negative Feedback') {
+            negative.add(record.fields.businessID);
           }
+          
         });
         setInterestingBusinesses(interesting);
         setNotInterestingBusinesses(notInteresting);
+        setEngagementBusinesses(engagement);
+        setNegativeBusinesses(negative);
         fetchNextPage();
       });
   };
@@ -190,16 +201,20 @@ const Component = () => {
       const businessType = properties.category || 'N/A';
       const isInteresting = interestingBusinesses.has(businessID);
       const isNotInteresting = notInterestingBusinesses.has(businessID);
+      const engagement = engagementBusinesses.has(businessID);
+      const negative = negativeBusinesses.has(businessID);
 
       console.log("Adding marker for business:", name);
 
-      const markerColor = isInteresting ? "#FF0000" : isNotInteresting ? "#000000" : "#3FB1CE";
+      const markerColor = isInteresting ? "#008000" : isNotInteresting ? "#808080"  : engagement ? "#FFD700" : negative ? "#FF0000" : "#3FB1CE";
       const marker = new mapboxgl.Marker({ color: markerColor })
         .setLngLat([longitude, latitude])
         .addTo(map);
 
       const buttonDisabledInteresting = isInteresting ? 'disabled' : '';
       const buttonDisabledNotInteresting = isNotInteresting ? 'disabled' : '';
+      const buttonDisabledEngagement = engagement ? 'disabled' : '';
+      const buttonDisabledNegative = negative ? 'disabled' : '';
 
       marker.getElement().addEventListener('mouseenter', () => {
         const popupContent = `
@@ -210,6 +225,8 @@ const Component = () => {
           <p><strong>Type:</strong> ${businessType}</p>
           <button ${buttonDisabledInteresting} id="interesting-${businessID}" class="interesting-button">Interesting</button>
           <button ${buttonDisabledNotInteresting} id="not-interesting-${businessID}" class="not-interesting-button">Not Interesting</button>
+          <button ${buttonDisabledEngagement} id="engagement-${businessID}" class="engagement-button">Engagement</button>
+          <button ${buttonDisabledNegative} id="negative-${businessID}" class="negative-button">Negative Feedback</button>
         `;
 
         if (popup) {
@@ -231,7 +248,7 @@ const Component = () => {
             longitude,
             businessID,
             marker,
-          }, 'Interesting', "#FF0000");
+          }, 'Interesting', "#008000");
         });
 
         document.getElementById(`not-interesting-${businessID}`).addEventListener('click', () => {
@@ -242,7 +259,29 @@ const Component = () => {
             longitude,
             businessID,
             marker,
-          }, 'Not Interesting', "#000000");
+          }, 'Not Interesting', "#808080");
+        });
+
+        document.getElementById(`engagement-${businessID}`).addEventListener('click', () => {
+          updateBusinessStatus({
+            name,
+            address,
+            latitude,
+            longitude,
+            businessID,
+            marker,
+          }, 'Engagement', "#FFD700");
+        });
+
+        document.getElementById(`negative-${businessID}`).addEventListener('click', () => {
+          updateBusinessStatus({
+            name,
+            address,
+            latitude,
+            longitude,
+            businessID,
+            marker,
+          }, 'Negative Feedback', "#FF0000");
         });
       });
 
@@ -272,10 +311,14 @@ const Component = () => {
   newMarker.getElement().addEventListener('mouseenter', () => {
     const isInteresting = interestingBusinesses.has(business.businessID);
     const isNotInteresting = notInterestingBusinesses.has(business.businessID);
+    const isEngagement = engagementBusinesses.has(business.businessID);
+    const isNegative = negativeBusinesses.has(business.businessID);
 
     // Disable/Enable buttons based on both 'Interesting' and 'Not Interesting' sets
     const buttonDisabledInteresting = isInteresting ? 'disabled' : '';
     const buttonDisabledNotInteresting = isNotInteresting ? 'disabled' : '';
+    const buttonDisabledEngagement = isEngagement ? 'disabled' : '';
+    const buttonDisabledNegative = isNegative ? 'disabled' : '';
 
     const popupContent = `
       <h4>${business.name}</h4>
@@ -285,6 +328,8 @@ const Component = () => {
       <p><strong>Type:</strong> ${business.businessType || 'N/A'}</p>
       <button ${buttonDisabledInteresting} id="interesting-${business.businessID}" class="interesting-button">Interesting</button>
       <button ${buttonDisabledNotInteresting} id="not-interesting-${business.businessID}" class="not-interesting-button">Not Interesting</button>
+      <button ${buttonDisabledEngagement} id="engagement-${business.businessID}" class="engagement-button">Engagement</button>
+      <button ${buttonDisabledNegative} id="negative-${business.businessID}" class="negative-button">Negative Feedback</button>
     `;
 
     const popup = new mapboxgl.Popup({ offset: 25 })
@@ -296,11 +341,19 @@ const Component = () => {
 
     // Add click event listeners for buttons
     document.getElementById(`interesting-${business.businessID}`).addEventListener('click', () => {
-      updateBusinessStatus(business, 'Interesting', "#FF0000");
+      updateBusinessStatus(business, 'Interesting', "#008000");
     });
 
     document.getElementById(`not-interesting-${business.businessID}`).addEventListener('click', () => {
-      updateBusinessStatus(business, 'Not Interesting', "#000000");
+      updateBusinessStatus(business, 'Not Interesting', "#808080");
+    });
+
+    document.getElementById(`engagement-${business.businessID}`).addEventListener('click', () => {
+      updateBusinessStatus(business, 'Engagement', "#FFD700");
+    });
+
+    document.getElementById(`negative-${business.businessID}`).addEventListener('click', () => {
+      updateBusinessStatus(business, 'Negative Feedback', "#FF0000");
     });
   });
 
@@ -319,18 +372,49 @@ const Component = () => {
 const updateBusinessStatus = (business, status, newColor) => {
   const interestingButton = document.getElementById(`interesting-${business.businessID}`);
   const notInterestingButton = document.getElementById(`not-interesting-${business.businessID}`);
+  const engagementButton = document.getElementById(`engagement-${business.businessID}`);
+  const negativeButton = document.getElementById(`negative-${business.businessID}`);
 
   // Disable the button that was clicked
   if (status === 'Interesting') {
     interestingButton.setAttribute('disabled', 'disabled');
     notInterestingButton.removeAttribute('disabled');
+    engagementButton.removeAttribute('disabled');
+    negativeButton.removeAttribute('disabled');
     interestingBusinesses.add(business.businessID);
     notInterestingBusinesses.delete(business.businessID); // Remove from 'Not Interesting' set
-  } else {
+    engagementBusinesses.delete(business.businessID);
+    negativeBusinesses.delete(business.businessID);
+  } 
+  else if (status === 'Engagement') {
+    engagementButton.setAttribute('disabled', 'disabled');
+    notInterestingButton.removeAttribute('disabled');
+    interestingButton.removeAttribute('disabled');
+    negativeButton.removeAttribute('disabled');
+    engagementBusinesses.add(business.businessID);
+    notInterestingBusinesses.delete(business.businessID); // Remove from 'Not Interesting' set
+    interestingBusinesses.delete(business.businessID);
+    negativeBusinesses.delete(business.businessID);
+  } 
+  else if (status === 'Negative Feedback') {
+    negativeButton.setAttribute('disabled', 'disabled');
+    notInterestingButton.removeAttribute('disabled');
+    engagementButton.removeAttribute('disabled');
+    interestingButton.removeAttribute('disabled');
+    negativeBusinesses.add(business.businessID);
+    notInterestingBusinesses.delete(business.businessID); // Remove from 'Not Interesting' set
+    engagementBusinesses.delete(business.businessID);
+    interestingBusinesses.delete(business.businessID);
+  }
+  else if (status === 'Not Interesting') {
     notInterestingButton.setAttribute('disabled', 'disabled');
+    negativeButton.removeAttribute('disabled');
+    engagementButton.removeAttribute('disabled');
     interestingButton.removeAttribute('disabled');
     notInterestingBusinesses.add(business.businessID);
-    interestingBusinesses.delete(business.businessID); // Remove from 'Interesting' set
+    negativeBusinesses.delete(business.businessID); // Remove from 'Not Interesting' set
+    engagementBusinesses.delete(business.businessID);
+    interestingBusinesses.delete(business.businessID);
   }
 
   // Update the marker color immediately
