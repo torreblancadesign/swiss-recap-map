@@ -138,8 +138,61 @@ const Component = () => {
     searchForBusinessesWithinPolygon(bbox);
   };
 
+  const searchForBusinessesWithinPolygon = async (bbox) => {
+  const [minLng, minLat, maxLng, maxLat] = bbox;
+  const cellSize = 0.1; // Determines the distance between proximity points; adjust as needed
+  const maxPages = 5; // Set max pages to avoid too many API calls
+
+  let allBusinesses = new Set();
+
+  // Helper to create unique keys to avoid duplicates
+  const getUniqueKey = (business) => `${business.id}-${business.place_name}`;
+
+  // Function to fetch results for a specific location and page
+  const fetchBusinessesAtLocation = async (lng, lat, page) => {
+    try {
+      const response = await geocodingClient
+        .forwardGeocode({
+          query: 'restaurant, grocery, gas station',
+          proximity: [lng, lat],
+          limit: 10, // Set limit per page to avoid hitting API limits
+        })
+        .send();
+
+      const businesses = response.body.features;
+      if (businesses) {
+        businesses.forEach(business => allBusinesses.add(getUniqueKey(business)));
+      }
+    } catch (error) {
+      console.error("Error fetching businesses:", error);
+    }
+  };
+
+  // Generate grid of proximity points and fetch data
+  for (let lng = minLng; lng < maxLng; lng += cellSize) {
+    for (let lat = minLat; lat < maxLat; lat += cellSize) {
+      for (let page = 1; page <= maxPages; page++) {
+        await fetchBusinessesAtLocation(lng, lat, page);
+      }
+    }
+  }
+
+  const uniqueBusinesses = Array.from(allBusinesses).map(businessKey => {
+    const [id, placeName] = businessKey.split('-');
+    return { id, place_name: placeName };
+  });
+
+  if (uniqueBusinesses.length === 0) {
+    console.log("No businesses found within this polygon.");
+  } else {
+    console.log("Businesses found within polygon:", uniqueBusinesses);
+    addBusinessMarkers(uniqueBusinesses, map); // Add markers to the map
+  }
+};
+
+
   // Fetch businesses within the bounding box of the drawn polygon
-  const searchForBusinessesWithinPolygon = (bbox) => {
+  /*const searchForBusinessesWithinPolygon = (bbox) => {
     const [minLng, minLat, maxLng, maxLat] = bbox;
 
     console.log('Bounding box:', { minLng, minLat, maxLng, maxLat });
@@ -165,7 +218,7 @@ const Component = () => {
       console.error("Error fetching businesses within polygon:", err);
     });
   };
-
+*/
   // Fetch businesses by manual search (address and radius)
   const runManualSearch = async () => {
     if (!map) return;
