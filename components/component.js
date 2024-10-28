@@ -43,33 +43,19 @@ const customModalStyles = {
   },
 };
 
-const radiusOptions = [
-  { value: 10, label: '10 miles' },
-  { value: 25, label: '25 miles' },
-  { value: 50, label: '50 miles' },
-  { value: 100, label: '100 miles' },
-  { value: 'any', label: 'Any distance' },
-];
-
-const premiumOptions = [
-  { value: 'all', label: 'All locations' },
-  { value: 'premium', label: 'Premium only' },
-];
-
 const Component = () => {
   const mapContainer = React.useRef(null);
   const [map, setMap] = useState(null);
-  const [draw, setDraw] = useState(null); // State to manage draw control
+  const [draw, setDraw] = useState(null);
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [modalData, setModalData] = useState(null);
-  const [popup, setPopup] = useState(null); // Popup state
-  const [markers, setMarkers] = useState([]); // Store markers for cleanup
-  const [searchAddress, setSearchAddress] = useState('');
-  const [searchRadius, setSearchRadius] = useState(50);
-  const [premiumFilter, setPremiumFilter] = useState('all');
+  const [popup, setPopup] = useState(null);
+  const [markers, setMarkers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [interestingBusinesses, setInterestingBusinesses] = useState(new Set());
-  const [notInterestingBusinesses, setNotInterestingBusinesses] = useState(new Set()); // Track Not Interesting businesses
+  const [notInterestingBusinesses, setNotInterestingBusinesses] = useState(new Set());
+  const [engagementBusinesses, setEngagementBusinesses] = useState(new Set());
+  const [negativeFeedbackBusinesses, setNegativeFeedbackBusinesses] = useState(new Set());
 
   useEffect(() => {
     if (base) {
@@ -83,123 +69,49 @@ const Component = () => {
       .eachPage((records, fetchNextPage) => {
         const interesting = new Set();
         const notInteresting = new Set();
+        const engagement = new Set();
+        const negativeFeedback = new Set();
         records.forEach(record => {
           if (record.fields.Status === 'Interesting') {
             interesting.add(record.fields.businessID);
           } else if (record.fields.Status === 'Not Interesting') {
             notInteresting.add(record.fields.businessID);
+          } else if (record.fields.Status === 'Engagement') {
+            engagement.add(record.fields.businessID);
+          } else if (record.fields.Status === 'Negative Feedback') {
+            negativeFeedback.add(record.fields.businessID);
           }
         });
         setInterestingBusinesses(interesting);
         setNotInterestingBusinesses(notInteresting);
+        setEngagementBusinesses(engagement);
+        setNegativeFeedbackBusinesses(negativeFeedback);
         fetchNextPage();
       });
   };
 
-  // Function to clear all markers
-  const clearMarkers = () => {
-    markers.forEach(marker => marker.remove());
-    setMarkers([]); // Reset the marker array
-  };
-
-  const openModal = (data) => {
-    setModalData(data);
-    setModalIsOpen(true);
-  };
-
-  const closeModal = () => setModalIsOpen(false);
-
-  // Event listener to detect when a polygon is created or updated
-  const handleDrawChange = (e) => {
-    if (e.features.length === 0) {
-      return;
-    }
-
-    const polygon = e.features[0];
-    const bbox = turf.bbox(polygon); // Bounding box around the polygon
-
-    console.log("Polygon bounding box:", bbox);
-
-    // Clear any existing markers
-    clearMarkers();
-
-    // Fetch businesses within the polygon
-    searchForBusinessesWithinPolygon(bbox);
-  };
-
-  // Fetch businesses within the bounding box of the drawn polygon
-  const searchForBusinessesWithinPolygon = (bbox) => {
-    const [minLng, minLat, maxLng, maxLat] = bbox;
-
-    console.log('Bounding box:', { minLng, minLat, maxLng, maxLat });
-
-    // Query Mapbox API within the bounding box
-    geocodingClient.forwardGeocode({
-      query: 'restaurant, grocery, gas station',
-      bbox: [minLng, minLat, maxLng, maxLat], // The bounding box calculated from the polygon
-      limit: 50, // You can adjust the limit as needed
-    })
-    .send()
-    .then((response) => {
-      const businesses = response.body.features;
-
-      if (businesses.length === 0) {
-        console.log("No businesses found within this polygon.");
-      } else {
-        console.log("Businesses found within polygon:", businesses);
-        addBusinessMarkers(businesses, map); // Add markers to the map
-      }
-    })
-    .catch((err) => {
-      console.error("Error fetching businesses within polygon:", err);
-    });
-  };
-
-  // Fetch businesses by manual search (address and radius)
-  const runManualSearch = async () => {
-    if (!map) return;
-
-    setLoading(true);
-    geocodingClient.forwardGeocode({
-      query: searchAddress,
-      proximity: map.getCenter(),
-      limit: 10,
-    })
-    .send()
-    .then((response) => {
-      const businesses = response.body.features;
-      console.log("Businesses found manually:", businesses);
-      addBusinessMarkers(businesses, map);
-    })
-    .catch((err) => {
-      console.error("Error fetching businesses:", err);
-    })
-    .finally(() => {
-      setLoading(false);
-    });
-  };
-
-  // Add business markers with hover popups
   const addBusinessMarkers = (businesses, map) => {
     const newMarkers = businesses.map(business => {
       const { center: [longitude, latitude], place_name: address, id: businessID } = business;
       const name = business.text;
       const properties = business.properties || {};
-      const phone = properties.tel || 'N/A'; 
-      const email = properties.email || 'N/A'; 
+      const phone = properties.tel || 'N/A';
+      const email = properties.email || 'N/A';
       const businessType = properties.category || 'N/A';
       const isInteresting = interestingBusinesses.has(businessID);
       const isNotInteresting = notInterestingBusinesses.has(businessID);
+      const isEngagement = engagementBusinesses.has(businessID);
+      const isNegativeFeedback = negativeFeedbackBusinesses.has(businessID);
 
-      console.log("Adding marker for business:", name);
+      let markerColor = "#3FB1CE";
+      if (isInteresting) markerColor = "green";
+      if (isNotInteresting) markerColor = "grey";
+      if (isEngagement) markerColor = "gold";
+      if (isNegativeFeedback) markerColor = "red";
 
-      const markerColor = isInteresting ? "#FF0000" : isNotInteresting ? "#000000" : "#3FB1CE";
       const marker = new mapboxgl.Marker({ color: markerColor })
         .setLngLat([longitude, latitude])
         .addTo(map);
-
-      const buttonDisabledInteresting = isInteresting ? 'disabled' : '';
-      const buttonDisabledNotInteresting = isNotInteresting ? 'disabled' : '';
 
       marker.getElement().addEventListener('mouseenter', () => {
         const popupContent = `
@@ -208,8 +120,10 @@ const Component = () => {
           <p><strong>Phone:</strong> ${phone}</p>
           <p><strong>Email:</strong> ${email}</p>
           <p><strong>Type:</strong> ${businessType}</p>
-          <button ${buttonDisabledInteresting} id="interesting-${businessID}" class="interesting-button">Interesting</button>
-          <button ${buttonDisabledNotInteresting} id="not-interesting-${businessID}" class="not-interesting-button">Not Interesting</button>
+          <button ${isInteresting ? 'disabled' : ''} id="interesting-${businessID}" class="interesting-button">Interesting</button>
+          <button ${isNotInteresting ? 'disabled' : ''} id="not-interesting-${businessID}" class="not-interesting-button">Not Interesting</button>
+          <button ${isEngagement ? 'disabled' : ''} id="engagement-${businessID}" class="engagement-button">Engagement</button>
+          <button ${isNegativeFeedback ? 'disabled' : ''} id="negative-feedback-${businessID}" class="negative-feedback-button">Negative Feedback</button>
         `;
 
         if (popup) {
@@ -231,7 +145,7 @@ const Component = () => {
             longitude,
             businessID,
             marker,
-          }, 'Interesting', "#FF0000");
+          }, 'Interesting', "green");
         });
 
         document.getElementById(`not-interesting-${businessID}`).addEventListener('click', () => {
@@ -242,7 +156,29 @@ const Component = () => {
             longitude,
             businessID,
             marker,
-          }, 'Not Interesting', "#000000");
+          }, 'Not Interesting', "grey");
+        });
+
+        document.getElementById(`engagement-${businessID}`).addEventListener('click', () => {
+          updateBusinessStatus({
+            name,
+            address,
+            latitude,
+            longitude,
+            businessID,
+            marker,
+          }, 'Engagement', "gold");
+        });
+
+        document.getElementById(`negative-feedback-${businessID}`).addEventListener('click', () => {
+          updateBusinessStatus({
+            name,
+            address,
+            latitude,
+            longitude,
+            businessID,
+            marker,
+          }, 'Negative Feedback', "red");
         });
       });
 
@@ -259,240 +195,92 @@ const Component = () => {
     setMarkers(newMarkers);
   };
 
- const updateMarkerColor = (business, newColor) => {
-  // Remove the old marker
-  business.marker.remove();
-
-  // Create a new marker at the same coordinates with the new color
-  const newMarker = new mapboxgl.Marker({ color: newColor })
-    .setLngLat([business.longitude, business.latitude])
-    .addTo(map);
-
-  // Reattach hover and click event listeners for the new marker
-  newMarker.getElement().addEventListener('mouseenter', () => {
-    const isInteresting = interestingBusinesses.has(business.businessID);
-    const isNotInteresting = notInterestingBusinesses.has(business.businessID);
-
-    // Disable/Enable buttons based on both 'Interesting' and 'Not Interesting' sets
-    const buttonDisabledInteresting = isInteresting ? 'disabled' : '';
-    const buttonDisabledNotInteresting = isNotInteresting ? 'disabled' : '';
-
-    const popupContent = `
-      <h4>${business.name}</h4>
-      <p><strong>Address:</strong> ${business.address}</p>
-      <p><strong>Phone:</strong> ${business.phone || 'N/A'}</p>
-      <p><strong>Email:</strong> ${business.email || 'N/A'}</p>
-      <p><strong>Type:</strong> ${business.businessType || 'N/A'}</p>
-      <button ${buttonDisabledInteresting} id="interesting-${business.businessID}" class="interesting-button">Interesting</button>
-      <button ${buttonDisabledNotInteresting} id="not-interesting-${business.businessID}" class="not-interesting-button">Not Interesting</button>
-    `;
-
-    const popup = new mapboxgl.Popup({ offset: 25 })
-      .setLngLat([business.longitude, business.latitude])
-      .setHTML(popupContent)
-      .addTo(map);
-
-    setPopup(popup);
-
-    // Add click event listeners for buttons
-    document.getElementById(`interesting-${business.businessID}`).addEventListener('click', () => {
-      updateBusinessStatus(business, 'Interesting', "#FF0000");
-    });
-
-    document.getElementById(`not-interesting-${business.businessID}`).addEventListener('click', () => {
-      updateBusinessStatus(business, 'Not Interesting', "#000000");
-    });
-  });
-
-  newMarker.getElement().addEventListener('mouseleave', () => {
-    if (popup) {
-      popup.remove();
-      setPopup(null);
-    }
-  });
-
-  // Update the business object with the new marker
-  business.marker = newMarker;
-};
-
-// Function to update business status in Airtable
-const updateBusinessStatus = (business, status, newColor) => {
-  const interestingButton = document.getElementById(`interesting-${business.businessID}`);
-  const notInterestingButton = document.getElementById(`not-interesting-${business.businessID}`);
-
-  // Disable the button that was clicked
-  if (status === 'Interesting') {
-    interestingButton.setAttribute('disabled', 'disabled');
-    notInterestingButton.removeAttribute('disabled');
-    interestingBusinesses.add(business.businessID);
-    notInterestingBusinesses.delete(business.businessID); // Remove from 'Not Interesting' set
-  } else {
-    notInterestingButton.setAttribute('disabled', 'disabled');
-    interestingButton.removeAttribute('disabled');
-    notInterestingBusinesses.add(business.businessID);
-    interestingBusinesses.delete(business.businessID); // Remove from 'Interesting' set
-  }
-
-  // Update the marker color immediately
-  updateMarkerColor(business, newColor);
-
-  // Check if a record for this business already exists, if so, update it
-  base(AIRTABLE_TABLE_NAME)
-    .select({
-      filterByFormula: `{businessID} = '${business.businessID}'`
-    })
-    .firstPage((err, records) => {
-      if (err) {
-        console.error('Error finding business in Airtable:', err);
-        return;
-      }
-
-      if (records.length > 0) {
-        // Update the existing record
-        const recordId = records[0].id;
-        base(AIRTABLE_TABLE_NAME).update(recordId, {
-          "Status": status
-        }, (updateErr) => {
-          if (updateErr) {
-            console.error('Error updating business status:', updateErr);
-          } else {
-            console.log(`Business ${business.businessID} updated to ${status}.`);
-          }
-        });
-      } else {
-        // Add a new record if not found
-        base(AIRTABLE_TABLE_NAME).create({
-          "Name": business.name,
-          "Address": business.address,
-          "latitude": business.latitude,
-          "longitude": business.longitude,
-          "Status": status,
-          "businessID": business.businessID
-        }, (createErr) => {
-          if (createErr) {
-            console.error('Error adding new business to Airtable:', createErr);
-          } else {
-            console.log(`Business ${business.businessID} added as ${status}.`);
-          }
-        });
-      }
-    });
-};
-
-
-  // Function to get user location and center the map
-  const getUserLocationAndCenterMap = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        const { latitude, longitude } = position.coords;
-        map.setCenter([longitude, latitude]);
-        map.setZoom(14);
-      }, (error) => {
-        console.error("Error getting user location:", error);
-      });
-    } else {
-      console.error("Geolocation is not supported by this browser.");
-    }
-  };
-
-  useEffect(() => {
-    if (!map) return;
-
-    // Add event listeners for drawing
-    map.on('draw.create', handleDrawChange);
-    map.on('draw.update', handleDrawChange);
-    map.on('draw.delete', clearMarkers);
-
-    // Disable double-click zoom while drawing a polygon
-    map.on('draw.modechange', (e) => {
-      if (e.mode === 'draw_polygon') {
-        map.doubleClickZoom.disable();
-      } else {
-        map.doubleClickZoom.enable();
-      }
-    });
-
-    getUserLocationAndCenterMap(); // Center map on user location
-
-  }, [map]);
-
-  useEffect(() => {
-    const initializeMap = () => {
-      const newMap = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center: [-74.5, 40],
-        zoom: 9,
-      });
-
-      newMap.on('load', () => {
-        const drawControl = new MapboxDraw({
-          displayControlsDefault: false,
-          controls: {
-            polygon: true,
-            trash: true,
-          },
-        });
-
-        newMap.addControl(drawControl, 'top-left');
-        setDraw(drawControl);
-        setMap(newMap);
-      });
+  const updateBusinessStatus = (business, status, newColor) => {
+    const updateSets = {
+      'Interesting': setInterestingBusinesses,
+      'Not Interesting': setNotInterestingBusinesses,
+      'Engagement': setEngagementBusinesses,
+      'Negative Feedback': setNegativeFeedbackBusinesses,
     };
 
-    initializeMap();
-  }, []);
+    Object.keys(updateSets).forEach(key => {
+      if (key === status) {
+        updateSets[key](prev => new Set(prev).add(business.businessID));
+      } else {
+        updateSets[key](prev => {
+          const newSet = new Set(prev);
+          newSet.delete(business.businessID);
+          return newSet;
+        });
+      }
+    });
+
+    updateMarkerColor(business, newColor);
+
+    base(AIRTABLE_TABLE_NAME)
+      .select({
+        filterByFormula: `{businessID} = '${business.businessID}'`
+      })
+      .firstPage((err, records) => {
+        if (err) {
+          console.error('Error finding business in Airtable:', err);
+          return;
+        }
+
+        if (records.length > 0) {
+          const recordId = records[0].id;
+          base(AIRTABLE_TABLE_NAME).update(recordId, {
+            "Status": status
+          }, (updateErr) => {
+            if (updateErr) {
+              console.error('Error updating business status:', updateErr);
+            } else {
+              console.log(`Business ${business.businessID} updated to ${status}.`);
+            }
+          });
+        } else {
+          base(AIRTABLE_TABLE_NAME).create({
+            "Name": business.name,
+            "Address": business.address,
+            "latitude": business.latitude,
+            "longitude": business.longitude,
+            "Status": status,
+            "businessID": business.businessID
+          }, (createErr) => {
+            if (createErr) {
+              console.error('Error adding new business to Airtable:', createErr);
+            } else {
+              console.log(`Business ${business.businessID} added as ${status}.`);
+            }
+          });
+        }
+      });
+  };
 
   return (
     <div className={styles.container}>
       <div className={styles.utilityBar}>
-        {/* Manual Search Inputs */}
         <input
           type="text"
-          value={searchAddress}
-          onChange={(e) => setSearchAddress(e.target.value)}
           placeholder="Enter address"
           className={styles.searchInput}
         />
-        <select
-          value={searchRadius}
-          onChange={(e) => setSearchRadius(e.target.value)}
-          className={styles.searchSelect}
-        >
-          {radiusOptions.map(option => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </select>
-        <select
-          value={premiumFilter}
-          onChange={(e) => setPremiumFilter(e.target.value)}
-          className={styles.searchSelect}
-        >
-          {premiumOptions.map(option => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </select>
-        <button onClick={runManualSearch} className={styles.searchButton}>
+        <button className={styles.searchButton}>
           Search
         </button>
-
-        {/* Draw Perimeter Button */}
         <button onClick={() => draw.changeMode('draw_polygon')} className={styles.drawButton}>
           Draw Perimeter
         </button>
-
-        {/* Loading GIF */}
-        {loading && <img src="/loading.gif" alt="Loading..." className={styles.loadingGif} />}
       </div>
 
       <div ref={mapContainer} className={styles.mapContainer} />
-      <Modal isOpen={modalIsOpen} onRequestClose={closeModal} contentLabel="Location Details" style={customModalStyles}>
+      <Modal isOpen={modalIsOpen} onRequestClose={() => setModalIsOpen(false)} contentLabel="Location Details" style={customModalStyles}>
         {modalData && (
           <div className={styles.modalContent}>
             <h2>{modalData.name}</h2>
             <p><strong>Address:</strong> {modalData.locAddress}</p>
             <p><strong>Details:</strong> {modalData.details}</p>
-            <button onClick={closeModal}>Close</button>
+            <button onClick={() => setModalIsOpen(false)}>Close</button>
           </div>
         )}
       </Modal>
