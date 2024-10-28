@@ -148,7 +148,7 @@ const Component = () => {
     geocodingClient.forwardGeocode({
       query: 'restaurant, grocery, gas station',
       bbox: [minLng, minLat, maxLng, maxLat], // The bounding box calculated from the polygon
-      limit: 50, // You can adjust the limit as needed
+      limit: 100, // You can adjust the limit as needed
     })
     .send()
     .then((response) => {
@@ -174,7 +174,7 @@ const Component = () => {
     geocodingClient.forwardGeocode({
       query: searchAddress,
       proximity: map.getCenter(),
-      limit: 10,
+      limit: 100,
     })
     .send()
     .then((response) => {
