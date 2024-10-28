@@ -70,7 +70,7 @@ const Component = () => {
   const [loading, setLoading] = useState(false);
   const [interestingBusinesses, setInterestingBusinesses] = useState(new Set());
   const [notInterestingBusinesses, setNotInterestingBusinesses] = useState(new Set()); // Track Not Interesting businesses
-  const [engagmenetBusinesses, setEngagementBusinesses] = useState(new Set());
+  const [engagementBusinesses, setEngagementBusinesses] = useState(new Set());
   const [negativeBusinesses, setNegativeBusinesses] = useState(new Set()); // Track Not Interesting businesses
 
   useEffect(() => {
