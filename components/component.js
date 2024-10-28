@@ -63,6 +63,12 @@ const Component = () => {
     }
   }, []);
 
+  useEffect(() => {
+    if (map) {
+      initializeMapEvents();
+    }
+  }, [map]);
+
   const fetchBusinessesFromAirtable = () => {
     base(AIRTABLE_TABLE_NAME)
       .select()
@@ -88,6 +94,61 @@ const Component = () => {
         setNegativeFeedbackBusinesses(negativeFeedback);
         fetchNextPage();
       });
+  };
+
+  const initializeMapEvents = () => {
+    const drawControl = new MapboxDraw({
+      displayControlsDefault: false,
+      controls: {
+        polygon: true,
+        trash: true,
+      },
+    });
+
+    map.addControl(drawControl, 'top-left');
+    setDraw(drawControl);
+
+    map.on('draw.create', handleDrawCreate);
+    map.on('draw.update', handleDrawUpdate);
+    map.on('draw.delete', clearMarkers);
+  };
+
+  const handleDrawCreate = (e) => {
+    const features = e.features;
+    if (features.length) {
+      const polygon = features[0];
+      const bbox = turf.bbox(polygon);
+      searchForBusinessesWithinPolygon(bbox);
+    }
+  };
+
+  const handleDrawUpdate = (e) => {
+    clearMarkers();
+    handleDrawCreate(e);
+  };
+
+  const clearMarkers = () => {
+    markers.forEach(marker => marker.remove());
+    setMarkers([]);
+  };
+
+  const searchForBusinessesWithinPolygon = (bbox) => {
+    const [minLng, minLat, maxLng, maxLat] = bbox;
+    geocodingClient.forwardGeocode({
+      query: 'restaurant, grocery, gas station',
+      bbox: [minLng, minLat, maxLng, maxLat],
+      limit: 50,
+    })
+    .send()
+    .then((response) => {
+      const businesses = response.body.features;
+      if (businesses.length) {
+        addBusinessMarkers(businesses, map);
+      }
+    })
+    .catch((err) => {
+      console.error("Error fetching businesses within polygon:", err);
+    });
   };
 
   const addBusinessMarkers = (businesses, map) => {
@@ -257,6 +318,29 @@ const Component = () => {
       });
   };
 
+  const updateMarkerColor = (business, newColor) => {
+    business.marker.getElement().style.backgroundColor = newColor;
+  };
+
+  useEffect(() => {
+    if (!map) {
+      const initializeMap = () => {
+        const newMap = new mapboxgl.Map({
+          container: mapContainer.current,
+          style: 'mapbox://styles/mapbox/streets-v12',
+          center: [-74.5, 40],
+          zoom: 9,
+        });
+
+        newMap.on('load', () => {
+          setMap(newMap);
+        });
+      };
+
+      initializeMap();
+    }
+  }, [map]);
+
   return (
     <div className={styles.container}>
       <div className={styles.utilityBar}>
@@ -268,7 +352,7 @@ const Component = () => {
         <button className={styles.searchButton}>
           Search
         </button>
-        <button onClick={() => draw.changeMode('draw_polygon')} className={styles.drawButton}>
+        <button onClick={() => draw && draw.changeMode('draw_polygon')} className={styles.drawButton}>
           Draw Perimeter
         </button>
       </div>
