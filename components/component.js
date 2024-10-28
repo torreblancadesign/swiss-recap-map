@@ -140,27 +140,27 @@ const Component = () => {
 
   const searchForBusinessesWithinPolygon = async (bbox) => {
   const [minLng, minLat, maxLng, maxLat] = bbox;
-  const cellSize = 0.1; // Determines the distance between proximity points; adjust as needed
-  const maxPages = 5; // Set max pages to avoid too many API calls
+  const cellSize = 0.1; // Adjust cell size as needed
+  const maxPages = 5; // Maximum pages per proximity location
 
-  let allBusinesses = new Set();
+  const allBusinesses = new Set();
 
-  // Helper to create unique keys to avoid duplicates
+  // Helper to create unique keys for deduplication
   const getUniqueKey = (business) => `${business.id}-${business.place_name}`;
 
-  // Function to fetch results for a specific location and page
+  // Function to fetch businesses for a specific proximity location
   const fetchBusinessesAtLocation = async (lng, lat, page) => {
     try {
       const response = await geocodingClient
         .forwardGeocode({
           query: 'restaurant, grocery, gas station',
           proximity: [lng, lat],
-          limit: 10, // Set limit per page to avoid hitting API limits
+          limit: 10, // Limit per query for pagination
         })
         .send();
 
-      const businesses = response.body.features;
-      if (businesses) {
+      const businesses = response.body?.features;
+      if (businesses && businesses.length > 0) {
         businesses.forEach(business => allBusinesses.add(getUniqueKey(business)));
       }
     } catch (error) {
@@ -168,7 +168,7 @@ const Component = () => {
     }
   };
 
-  // Generate grid of proximity points and fetch data
+  // Loop through the bounding box in a grid pattern
   for (let lng = minLng; lng < maxLng; lng += cellSize) {
     for (let lat = minLat; lat < maxLat; lat += cellSize) {
       for (let page = 1; page <= maxPages; page++) {
@@ -177,6 +177,7 @@ const Component = () => {
     }
   }
 
+  // Convert the Set of unique businesses to an array of business objects
   const uniqueBusinesses = Array.from(allBusinesses).map(businessKey => {
     const [id, placeName] = businessKey.split('-');
     return { id, place_name: placeName };
@@ -189,6 +190,7 @@ const Component = () => {
     addBusinessMarkers(uniqueBusinesses, map); // Add markers to the map
   }
 };
+
 
 
   // Fetch businesses within the bounding box of the drawn polygon
