@@ -140,48 +140,51 @@ const Component = () => {
 
   const searchForBusinessesWithinPolygon = async (bbox) => {
   const [minLng, minLat, maxLng, maxLat] = bbox;
-  const cellSize = 0.1; // Adjust cell size as needed
-  const maxPages = 5; // Maximum pages per proximity location
+  const cellSize = 0.1; // Size of each grid cell in the bounding box, adjust as needed
+  const maxPages = 5; // Number of pages to retrieve per cell
 
-  const allBusinesses = new Set();
-
-  // Helper to create unique keys for deduplication
-  const getUniqueKey = (business) => `${business.id}-${business.place_name}`;
+  const allBusinesses = new Map(); // Use Map to store unique businesses with IDs as keys
 
   // Function to fetch businesses for a specific proximity location
-  const fetchBusinessesAtLocation = async (lng, lat, page) => {
+  const fetchBusinessesAtLocation = async (lng, lat) => {
     try {
       const response = await geocodingClient
         .forwardGeocode({
           query: 'restaurant, grocery, gas station',
           proximity: [lng, lat],
-          limit: 10, // Limit per query for pagination
+          limit: 10, // Limit per query, adjust as needed
         })
         .send();
 
-      const businesses = response.body?.features;
-      if (businesses && businesses.length > 0) {
-        businesses.forEach(business => allBusinesses.add(getUniqueKey(business)));
+      const businesses = response.body && response.body.features;
+      if (Array.isArray(businesses)) {
+        businesses.forEach(business => {
+          if (business.id && business.place_name) { // Check for valid data
+            allBusinesses.set(business.id, {
+              id: business.id,
+              place_name: business.place_name,
+            });
+          }
+        });
+      } else {
+        console.log("No valid businesses found in response:", response);
       }
     } catch (error) {
       console.error("Error fetching businesses:", error);
     }
   };
 
-  // Loop through the bounding box in a grid pattern
+  // Generate grid of proximity points and fetch data
   for (let lng = minLng; lng < maxLng; lng += cellSize) {
     for (let lat = minLat; lat < maxLat; lat += cellSize) {
       for (let page = 1; page <= maxPages; page++) {
-        await fetchBusinessesAtLocation(lng, lat, page);
+        await fetchBusinessesAtLocation(lng, lat);
       }
     }
   }
 
-  // Convert the Set of unique businesses to an array of business objects
-  const uniqueBusinesses = Array.from(allBusinesses).map(businessKey => {
-    const [id, placeName] = businessKey.split('-');
-    return { id, place_name: placeName };
-  });
+  // Convert Map values to an array
+  const uniqueBusinesses = Array.from(allBusinesses.values());
 
   if (uniqueBusinesses.length === 0) {
     console.log("No businesses found within this polygon.");
@@ -190,6 +193,7 @@ const Component = () => {
     addBusinessMarkers(uniqueBusinesses, map); // Add markers to the map
   }
 };
+
 
 
 
